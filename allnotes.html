@@ -14,15 +14,28 @@
     <a href="main.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">回我的筆記</a>
   </div>
 
-  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-4 p-2 border rounded-lg">
+  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
 
-  <div id="allNotesList" class="space-y-4"></div>
+  <div class="grid grid-cols-2 gap-6">
+    <!-- 我的筆記 -->
+    <div>
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
+      <div id="myNotesList" class="space-y-4"></div>
+    </div>
+
+    <!-- 大家的筆記 -->
+    <div>
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">大家的筆記</h2>
+      <div id="allNotesList" class="space-y-4"></div>
+    </div>
+  </div>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -41,9 +54,12 @@ const db = getFirestore(app);
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
 
-  const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
-  onSnapshot(allNotesQuery, snapshot => {
-    allNotesList.innerHTML = "";
+  const uid = auth.currentUser.uid;
+
+  // 我的筆記
+  const myNotesQuery = query(collection(db, "notes"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+  onSnapshot(myNotesQuery, snapshot => {
+    myNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
       const div = document.createElement("div");
@@ -57,18 +73,42 @@ onAuthStateChanged(auth, user => {
         img.style.display = "block";
         div.appendChild(img);
       }
+      myNotesList.appendChild(div);
+    });
+  });
+
+  // 大家的筆記
+  const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
+  onSnapshot(allNotesQuery, snapshot => {
+    allNotesList.innerHTML = "";
+    snapshot.forEach(docItem => {
+      const d = docItem.data();
+      const div = document.createElement("div");
+      div.className = "border p-3 rounded-lg bg-gray-50";
+      div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}${d.uid === uid ? " (自己)" : ""}</h4>
+                       <p>${d.content || "(無內容)"}</p>`;
+      if (d.imageBase64) {
+        const img = document.createElement("img");
+        img.src = d.imageBase64;
+        img.style.maxWidth = "240px";
+        img.style.display = "block";
+        div.appendChild(img);
+      }
       allNotesList.appendChild(div);
     });
   });
 });
 
-// 搜尋功能
+// 搜尋功能（同時搜尋兩邊）
 searchNotes.oninput = () => {
   const keyword = searchNotes.value.toLowerCase();
-  allNotesList.querySelectorAll("div").forEach(div => {
-    const title = div.querySelector("h4").innerText.toLowerCase();
-    const content = div.querySelector("p").innerText.toLowerCase();
-    div.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
+
+  [myNotesList, allNotesList].forEach(list => {
+    list.querySelectorAll("div").forEach(div => {
+      const title = div.querySelector("h4").innerText.toLowerCase();
+      const content = div.querySelector("p").innerText.toLowerCase();
+      div.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
+    });
   });
 };
 </script>
