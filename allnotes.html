@@ -61,7 +61,7 @@ onAuthStateChanged(auth, user => {
           <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
           <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
         </div>
-        <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
+        <div class="text-gray-700 mb-2">${d.content || "(無內容)"}</div>
       `;
       card.appendChild(contentDiv);
 
@@ -72,7 +72,6 @@ onAuthStateChanged(auth, user => {
         card.appendChild(img);
       }
 
-      // 自己的筆記，加修改/刪除功能
       if (isMine) {
         const btnContainer = document.createElement("div");
         btnContainer.className = "mt-2 flex gap-2";
@@ -87,20 +86,40 @@ onAuthStateChanged(auth, user => {
         delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
 
         editBtn.onclick = () => {
-          // 變成輸入框
+          // 變成富文字編輯器
           contentDiv.innerHTML = `
-            <input type="text" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg" id="editTitle">
-            <textarea class="w-full p-1 border rounded-lg" id="editContent">${d.content}</textarea>
+            <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
+            <div class="flex gap-2 mb-1">
+              <select id="fontSize" class="border rounded px-1">
+                <option value="3">中</option>
+                <option value="4">大</option>
+                <option value="5">更大</option>
+              </select>
+              <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
+              <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
+              <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
+              <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
+            </div>
+            <div id="editableContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]">${d.content}</div>
           `;
+
           const saveBtn = document.createElement("button");
           saveBtn.textContent = "確定";
           saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
           saveBtn.onclick = async () => {
             const newTitle = document.getElementById("editTitle").value;
-            const newContent = document.getElementById("editContent").value;
+            const newContent = document.getElementById("editableContent").innerHTML;
             await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
           };
           contentDiv.appendChild(saveBtn);
+
+          // 設定工具列事件
+          const fontSize = contentDiv.querySelector("#fontSize");
+          const fontColor = contentDiv.querySelector("#fontColor");
+          const editableContent = contentDiv.querySelector("#editableContent");
+
+          fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
+          fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
         };
 
         btnContainer.appendChild(editBtn);
@@ -118,7 +137,7 @@ searchNotes.oninput = () => {
   const keyword = searchNotes.value.toLowerCase();
   allNotesList.querySelectorAll("div").forEach(card => {
     const title = card.querySelector("h4").innerText.toLowerCase();
-    const content = card.querySelector("p")?.innerText.toLowerCase() || "";
+    const content = card.querySelector("#editableContent")?.innerText.toLowerCase() || card.querySelector("div")?.innerText.toLowerCase() || "";
     card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
   });
 };
