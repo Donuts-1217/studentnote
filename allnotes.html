@@ -2,51 +2,40 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>NoteNote</title>
+  <title>所有筆記</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen relative">
+<body class="bg-gray-100 min-h-screen p-4">
 
-<div class="max-w-7xl mx-auto p-4">
+<div class="max-w-7xl mx-auto">
 
-  <!-- Header -->
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">NoteNote</h1>
+    <h1 class="text-2xl font-bold text-purple-700">所有筆記</h1>
+    <a href="main.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">回我的筆記</a>
+  </div>
+
+  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
+
+  <div class="grid grid-cols-2 gap-6">
+    <!-- 我的筆記區 -->
     <div>
-      <span id="userInfo" class="mr-4 text-gray-700"></span>
-      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">登出</button>
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
+      <div id="myNotesList" class="space-y-4"></div>
     </div>
-  </div>
 
-  <!-- 我的筆記 -->
-  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
-    <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
-    <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
-    <input type="file" id="imageInput" class="mb-3">
-    <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
-    <div id="myNotes" class="mt-6 space-y-4"></div>
-  </div>
-
-  <!-- 聊天室 -->
-  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">公開聊天室</h2>
-    <div id="chatBox" class="h-64 overflow-y-auto border p-2 rounded-lg mb-3 bg-gray-50"></div>
-    <div class="flex gap-2">
-      <input id="chatInput" placeholder="輸入訊息" class="flex-1 p-2 border rounded-lg">
-      <button id="sendChatBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full">送出</button>
+    <!-- 大家的筆記區 -->
+    <div>
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">大家的筆記</h2>
+      <div id="allNotesList" class="space-y-4"></div>
     </div>
   </div>
 
 </div>
 
-<!-- 右下角浮動按鈕 -->
-<a href="allnotes.html" id="allNotesBtn" class="fixed bottom-5 right-5 bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-full shadow-lg">所有筆記</a>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -62,34 +51,20 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-function imageToBase64(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-  });
-}
-
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-  window.location.href = "index.html";
-};
-
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
-  userInfo.innerText = user.email;
 
   const uid = auth.currentUser.uid;
 
   // 我的筆記
-  const notesQuery = query(collection(db, "notes"), where("uid", "==", uid), orderBy("createdAt", "desc"));
-  onSnapshot(notesQuery, snapshot => {
-    myNotes.innerHTML = "";
+  const myNotesQuery = query(collection(db, "notes"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+  onSnapshot(myNotesQuery, snapshot => {
+    myNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
-      const div = document.createElement("div");
-      div.className = "bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
-      div.innerHTML = `
+      const card = document.createElement("div");
+      card.className = "bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
+      card.innerHTML = `
         <div class="flex justify-between items-center mb-2">
           <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
           <span class="text-sm text-gray-500">(自己)</span>
@@ -100,63 +75,48 @@ onAuthStateChanged(auth, user => {
         const img = document.createElement("img");
         img.src = d.imageBase64;
         img.className = "max-w-full rounded-lg mt-2";
-        div.appendChild(img);
+        card.appendChild(img);
       }
-      myNotes.appendChild(div);
+      myNotesList.appendChild(card);
     });
   });
 
-  // 聊天室
-  const chatQuery = query(collection(db, "chat"), orderBy("createdAt"));
-  onSnapshot(chatQuery, snapshot => {
-    chatBox.innerHTML = "";
+  // 大家的筆記
+  const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
+  onSnapshot(allNotesQuery, snapshot => {
+    allNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
-      const m = docItem.data();
-      const div = document.createElement("div");
-      div.textContent = m.user + ": " + m.text;
-      div.className = "mb-1 text-gray-700";
-      chatBox.appendChild(div);
+      const d = docItem.data();
+      const card = document.createElement("div");
+      card.className = "bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
+      card.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
+          <span class="text-sm text-gray-500">${d.uid === uid ? "(自己)" : "他人"}</span>
+        </div>
+        <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
+      `;
+      if (d.imageBase64) {
+        const img = document.createElement("img");
+        img.src = d.imageBase64;
+        img.className = "max-w-full rounded-lg mt-2";
+        card.appendChild(img);
+      }
+      allNotesList.appendChild(card);
     });
-    chatBox.scrollTop = chatBox.scrollHeight;
   });
 });
 
-// 儲存筆記
-saveNoteBtn.onclick = async () => {
-  const title = noteTitle.value.trim();
-  const content = noteContent.value.trim();
-  const file = imageInput.files[0];
-  if (!title && !content && !file) { alert("請輸入內容或圖片"); return; }
-
-  let imageBase64 = null;
-  if (file) {
-    imageBase64 = await imageToBase64(file);
-    if (imageBase64.length > 900000) { alert("圖片過大"); return; }
-  }
-
-  await addDoc(collection(db, "notes"), {
-    uid: auth.currentUser.uid,
-    title,
-    content,
-    imageBase64,
-    createdAt: Date.now()
+// 搜尋功能（同時搜尋兩邊）
+searchNotes.oninput = () => {
+  const keyword = searchNotes.value.toLowerCase();
+  [myNotesList, allNotesList].forEach(list => {
+    list.querySelectorAll("div").forEach(card => {
+      const title = card.querySelector("h4").innerText.toLowerCase();
+      const content = card.querySelector("p").innerText.toLowerCase();
+      card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
+    });
   });
-
-  noteTitle.value = "";
-  noteContent.value = "";
-  imageInput.value = "";
-};
-
-// 送出聊天室訊息
-sendChatBtn.onclick = async () => {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  await addDoc(collection(db, "chat"), {
-    user: auth.currentUser.email,
-    text,
-    createdAt: Date.now()
-  });
-  chatInput.value = "";
 };
 </script>
 </body>
