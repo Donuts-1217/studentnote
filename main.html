@@ -36,10 +36,18 @@
   </div>
 
   <!-- 我的筆記列表 -->
-  <div id="myNotesList" class="space-y-4"></div>
+  <div id="myNotesList" class="space-y-4 mb-6"></div>
 
-  <!-- 聊天室區域保留原本功能 -->
+</div>
 
+<!-- 聊天室 -->
+<div class="fixed bottom-4 right-4 w-80 bg-white rounded-2xl shadow-lg p-4 flex flex-col">
+  <h2 class="font-bold text-lg mb-2">聊天室</h2>
+  <div id="chatMessages" class="flex-1 overflow-y-auto mb-2 max-h-64"></div>
+  <div class="flex gap-2">
+    <input type="text" id="chatInput" placeholder="輸入訊息" class="flex-1 p-2 border rounded-lg">
+    <button id="sendBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full">送出</button>
+  </div>
 </div>
 
 <script type="module">
@@ -67,7 +75,7 @@ onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   uid = auth.currentUser.uid;
 
-  // 監聽自己的筆記
+  // ---------------- 我的筆記 ----------------
   const myNotesQuery = query(collection(db, "notes"), where("uid","==",uid), orderBy("createdAt","desc"));
   onSnapshot(myNotesQuery, snapshot => {
     myNotesList.innerHTML = "";
@@ -121,7 +129,6 @@ onAuthStateChanged(auth, user => {
           </div>
           <div id="editableContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]">${d.content}</div>
         `;
-
         const saveBtn = document.createElement("button");
         saveBtn.textContent = "確定";
         saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
@@ -132,11 +139,8 @@ onAuthStateChanged(auth, user => {
         };
         contentDiv.appendChild(saveBtn);
 
-        // 工具列事件
         const fontSize = contentDiv.querySelector("#fontSize");
         const fontColor = contentDiv.querySelector("#fontColor");
-        const editableContent = contentDiv.querySelector("#editableContent");
-
         fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
         fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
       };
@@ -148,23 +152,40 @@ onAuthStateChanged(auth, user => {
       myNotesList.appendChild(card);
     });
   });
-});
 
-// 新增筆記
-addNoteBtn.onclick = async () => {
-  const title = newTitle.value;
-  const content = newContent.innerHTML;
-  await addDoc(collection(db, "notes"), {
-    title, content, uid, createdAt: serverTimestamp()
+  // ---------------- 新增筆記 ----------------
+  addNoteBtn.onclick = async () => {
+    const title = newTitle.value;
+    const content = newContent.innerHTML;
+    await addDoc(collection(db, "notes"), { title, content, uid, createdAt: serverTimestamp() });
+    newTitle.value = "";
+    newContent.innerHTML = "";
+  };
+
+  fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
+  fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
+
+  // ---------------- 聊天室 ----------------
+  const chatQuery = query(collection(db, "chat"), orderBy("createdAt"));
+  onSnapshot(chatQuery, snapshot => {
+    chatMessages.innerHTML = "";
+    snapshot.forEach(docItem => {
+      const d = docItem.data();
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `p-1 rounded ${d.uid === uid ? "bg-blue-100 self-end" : "bg-gray-200 self-start"} mb-1 max-w-[80%]`;
+      msgDiv.innerHTML = `<strong>${d.name || "匿名"}:</strong> ${d.message}`;
+      chatMessages.appendChild(msgDiv);
+    });
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   });
-  newTitle.value = "";
-  newContent.innerHTML = "";
-};
 
-// 新增筆記工具列事件
-fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
-fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
-
+  sendBtn.onclick = async () => {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+    await addDoc(collection(db, "chat"), { uid, name: auth.currentUser.displayName || "匿名", message: msg, createdAt: serverTimestamp() });
+    chatInput.value = "";
+  };
+});
 </script>
 </body>
 </html>
