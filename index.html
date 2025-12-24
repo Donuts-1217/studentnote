@@ -2,24 +2,20 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>登入</title>
+  <title>Google 登入</title>
 </head>
 <body>
 
 <h2>筆記系統登入</h2>
 
-<input id="email" type="email" placeholder="Email"><br>
-<input id="password" type="password" placeholder="Password"><br>
-
-<button id="loginBtn">登入</button>
-<button id="registerBtn">註冊</button>
+<button id="googleLoginBtn">使用 Google 登入</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -34,23 +30,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// 登入
-document.getElementById("loginBtn").onclick = async () => {
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  await signInWithEmailAndPassword(auth, email, password);
+// Google 登入
+googleLoginBtn.onclick = async () => {
+  await signInWithPopup(auth, provider);
   window.location.href = "main.html";
-};
-
-// 註冊
-document.getElementById("registerBtn").onclick = async () => {
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  await createUserWithEmailAndPassword(auth, email, password);
-  alert("註冊成功，請再登入");
 };
 </script>
 

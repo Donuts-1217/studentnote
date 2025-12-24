@@ -8,6 +8,7 @@
 
 <h2>筆記上傳與聊天室</h2>
 
+<div id="userInfo"></div>
 <button id="logoutBtn">登出</button>
 
 <hr>
@@ -54,16 +55,20 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT"
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 轉 Base64
+// Base64 轉換
 function imageToBase64(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -72,18 +77,22 @@ function imageToBase64(file) {
   });
 }
 
+// 驗證狀態
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  userInfo.innerText = "登入帳號：" + user.email;
+  loadMyNotes();
+});
+
 // 登出
 logoutBtn.onclick = async () => {
   await signOut(auth);
   window.location.href = "index.html";
 };
-
-// 驗證狀態
-onAuthStateChanged(auth, user => {
-  if (!user) {
-    window.location.href = "index.html";
-  }
-});
 
 // 儲存筆記
 saveNoteBtn.onclick = async () => {
@@ -92,9 +101,7 @@ saveNoteBtn.onclick = async () => {
   const file = imageInput.files[0];
 
   let imageBase64 = null;
-  if (file) {
-    imageBase64 = await imageToBase64(file);
-  }
+  if (file) imageBase64 = await imageToBase64(file);
 
   await addDoc(collection(db, "notes"), {
     uid: auth.currentUser.uid,
@@ -121,10 +128,7 @@ async function loadMyNotes() {
   result.forEach(doc => {
     const d = doc.data();
     const div = document.createElement("div");
-    div.innerHTML = `
-      <h4>${d.title}</h4>
-      <p>${d.content}</p>
-    `;
+    div.innerHTML = `<h4>${d.title}</h4><p>${d.content}</p>`;
     if (d.imageBase64) {
       const img = document.createElement("img");
       img.src = d.imageBase64;
@@ -135,7 +139,7 @@ async function loadMyNotes() {
   });
 }
 
-// 搜尋筆記（標題關鍵字）
+// 搜尋
 searchBtn.onclick = async () => {
   const keyword = searchInput.value;
   const result = await getDocs(collection(db, "notes"));
@@ -151,7 +155,7 @@ searchBtn.onclick = async () => {
   });
 };
 
-// 聊天室 即時監聽
+// 聊天室
 onSnapshot(
   query(collection(db, "chat"), orderBy("createdAt")),
   snapshot => {
@@ -166,14 +170,16 @@ onSnapshot(
   }
 );
 
-// 發送聊天訊息
+// 發送訊息
 sendChatBtn.onclick = async () => {
   const text = chatInput.value;
+
   await addDoc(collection(db, "chat"), {
     user: auth.currentUser.email,
     text,
     createdAt: Date.now()
   });
+
   chatInput.value = "";
 };
 </script>
