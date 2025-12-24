@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>筆記系統主頁</title>
+</head>
+<body>
+
+<h2>筆記上傳與聊天室</h2>
+
+<button id="logoutBtn">登出</button>
+
+<hr>
+
+<h3>搜尋筆記</h3>
+<input id="searchInput" placeholder="輸入關鍵字">
+<button id="searchBtn">搜尋</button>
+<div id="searchResult"></div>
+
+<hr>
+
+<h3>新增筆記</h3>
+<input id="noteTitle" placeholder="標題"><br>
+<textarea id="noteContent" placeholder="內容"></textarea><br>
+
+<input type="file" id="imageInput">
+<button id="saveNoteBtn">儲存筆記</button>
+
+<div id="myNotes"></div>
+
+<hr>
+
+<h3>公共聊天室</h3>
+<div id="chatBox" style="height:200px;overflow-y:auto;border:1px solid #000"></div>
+<input id="chatInput" placeholder="輸入訊息">
+<button id="sendChatBtn">送出</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signOut 
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { 
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// 轉 Base64
+function imageToBase64(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+  });
+}
+
+// 登出
+logoutBtn.onclick = async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+};
+
+// 驗證狀態
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    window.location.href = "index.html";
+  }
+});
+
+// 儲存筆記
+saveNoteBtn.onclick = async () => {
+  const title = noteTitle.value;
+  const content = noteContent.value;
+  const file = imageInput.files[0];
+
+  let imageBase64 = null;
+  if (file) {
+    imageBase64 = await imageToBase64(file);
+  }
+
+  await addDoc(collection(db, "notes"), {
+    uid: auth.currentUser.uid,
+    title,
+    content,
+    imageBase64,
+    createdAt: Date.now()
+  });
+
+  alert("已儲存");
+  loadMyNotes();
+};
+
+// 讀取自己的筆記
+async function loadMyNotes() {
+  const q = query(
+    collection(db, "notes"),
+    where("uid", "==", auth.currentUser.uid)
+  );
+  const result = await getDocs(q);
+
+  myNotes.innerHTML = "";
+
+  result.forEach(doc => {
+    const d = doc.data();
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <h4>${d.title}</h4>
+      <p>${d.content}</p>
+    `;
+    if (d.imageBase64) {
+      const img = document.createElement("img");
+      img.src = d.imageBase64;
+      img.style.maxWidth = "200px";
+      div.appendChild(img);
+    }
+    myNotes.appendChild(div);
+  });
+}
+
+// 搜尋筆記（標題關鍵字）
+searchBtn.onclick = async () => {
+  const keyword = searchInput.value;
+  const result = await getDocs(collection(db, "notes"));
+  searchResult.innerHTML = "";
+
+  result.forEach(doc => {
+    const d = doc.data();
+    if (d.title.includes(keyword) || d.content.includes(keyword)) {
+      const div = document.createElement("div");
+      div.innerHTML = `<b>${d.title}</b> - ${d.content}`;
+      searchResult.appendChild(div);
+    }
+  });
+};
+
+// 聊天室 即時監聽
+onSnapshot(
+  query(collection(db, "chat"), orderBy("createdAt")),
+  snapshot => {
+    chatBox.innerHTML = "";
+    snapshot.forEach(doc => {
+      const m = doc.data();
+      const div = document.createElement("div");
+      div.textContent = m.user + ": " + m.text;
+      chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+);
+
+// 發送聊天訊息
+sendChatBtn.onclick = async () => {
+  const text = chatInput.value;
+  await addDoc(collection(db, "chat"), {
+    user: auth.currentUser.email,
+    text,
+    createdAt: Date.now()
+  });
+  chatInput.value = "";
+};
+</script>
+
+</body>
+</html>
