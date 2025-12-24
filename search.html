@@ -41,13 +41,28 @@ onAuthStateChanged(auth, user => {
   const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt","desc"));
   onSnapshot(allNotesQuery, snapshot => {
     searchResults.innerHTML = "";
+    
+    // 三段式搜尋
+    const titleMatches = [];
+    const userMatches = [];
+    const contentMatches = [];
+    
     snapshot.forEach(docItem => {
       const d = docItem.data();
-      const isMine = d.uid === uid;
       const title = (d.title||"").toLowerCase();
       const content = (d.content||"").toLowerCase();
-      if (!title.includes(keyword) && !content.includes(keyword)) return;
+      const name = (d.name||"").toLowerCase();
 
+      if(title.includes(keyword)) titleMatches.push(docItem);
+      else if(name.includes(keyword)) userMatches.push(docItem);
+      else if(content.includes(keyword)) contentMatches.push(docItem);
+    });
+
+    const sortedResults = [...titleMatches, ...userMatches, ...contentMatches];
+
+    sortedResults.forEach(docItem => {
+      const d = docItem.data();
+      const isMine = d.uid === uid;
       const card = document.createElement("div");
       card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
 
@@ -71,15 +86,10 @@ onAuthStateChanged(auth, user => {
       if (isMine) {
         const btnContainer = document.createElement("div");
         btnContainer.className = "mt-2 flex gap-2";
+
         const editBtn = document.createElement("button");
         editBtn.textContent = "修改";
         editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
-
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "刪除";
-        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
-        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
-
         editBtn.onclick = () => {
           contentDiv.innerHTML = `
             <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
@@ -113,6 +123,11 @@ onAuthStateChanged(auth, user => {
           fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
           fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
         };
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "刪除";
+        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
+        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
 
         btnContainer.appendChild(editBtn);
         btnContainer.appendChild(delBtn);
