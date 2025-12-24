@@ -20,12 +20,11 @@
 
   <!-- 筆記上傳區 -->
   <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增 / 編輯筆記</h2>
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增筆記</h2>
     <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
     <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
     <input type="file" id="imageInput" class="mb-3">
     <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
-    <input type="hidden" id="editNoteId">
   </div>
 
   <!-- 我的筆記列表 -->
@@ -50,9 +49,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { 
-  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc 
+  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
   authDomain: "classquest-419e1.firebaseapp.com",
@@ -87,7 +87,7 @@ onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   userInfo.innerText = user.email;
 
-  // 我的筆記監聽 (只抓自己的)
+  // 我的筆記監聽，只抓自己的
   const notesQuery = query(
     collection(db, "notes"),
     where("uid", "==", auth.currentUser.uid),
@@ -100,10 +100,8 @@ onAuthStateChanged(auth, user => {
       const d = docItem.data();
       const div = document.createElement("div");
       div.className = "border p-3 rounded-lg bg-gray-50";
-
       div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
                        <p>${d.content || "(無內容)"}</p>`;
-
       if (d.imageBase64) {
         const img = document.createElement("img");
         img.src = d.imageBase64;
@@ -111,30 +109,6 @@ onAuthStateChanged(auth, user => {
         img.style.display = "block";
         div.appendChild(img);
       }
-
-      // 編輯按鈕
-      const editBtn = document.createElement("button");
-      editBtn.innerText = "編輯";
-      editBtn.className = "bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-full mr-2 mt-2";
-      editBtn.onclick = () => {
-        noteTitle.value = d.title;
-        noteContent.value = d.content;
-        editNoteId.value = docItem.id;
-        saveNoteBtn.innerText = "更新筆記";
-      };
-      div.appendChild(editBtn);
-
-      // 刪除按鈕
-      const delBtn = document.createElement("button");
-      delBtn.innerText = "刪除";
-      delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full mt-2";
-      delBtn.onclick = async () => {
-        if (confirm("確定刪除這筆筆記嗎？")) {
-          await deleteDoc(doc(db, "notes", docItem.id));
-        }
-      };
-      div.appendChild(delBtn);
-
       myNotes.appendChild(div);
     });
   });
@@ -154,13 +128,11 @@ onAuthStateChanged(auth, user => {
   });
 });
 
-// 儲存筆記 (新增 / 編輯)
+// 儲存筆記
 saveNoteBtn.onclick = async () => {
   const title = noteTitle.value.trim();
   const content = noteContent.value.trim();
   const file = imageInput.files[0];
-  const editId = editNoteId.value;
-
   if (!title && !content && !file) { alert("請輸入內容或圖片"); return; }
 
   let imageBase64 = null;
@@ -169,22 +141,13 @@ saveNoteBtn.onclick = async () => {
     if (imageBase64.length > 900000) { alert("圖片過大"); return; }
   }
 
-  if (editId) {
-    // 編輯筆記
-    const docRef = doc(db, "notes", editId);
-    await updateDoc(docRef, { title, content, imageBase64 });
-    editNoteId.value = "";
-    saveNoteBtn.innerText = "儲存筆記";
-  } else {
-    // 新增筆記
-    await addDoc(collection(db, "notes"), {
-      uid: auth.currentUser.uid,
-      title,
-      content,
-      imageBase64,
-      createdAt: Date.now()
-    });
-  }
+  await addDoc(collection(db, "notes"), {
+    uid: auth.currentUser.uid,
+    title,
+    content,
+    imageBase64,
+    createdAt: Date.now()
+  });
 
   noteTitle.value = "";
   noteContent.value = "";
