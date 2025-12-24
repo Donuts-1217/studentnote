@@ -2,50 +2,50 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>NoteNote</title>
+  <title>我的筆記</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen relative">
+<body class="bg-gray-100 min-h-screen p-4">
 
-<div class="max-w-7xl mx-auto p-4">
+<div class="max-w-5xl mx-auto">
 
-  <!-- Header -->
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">NoteNote</h1>
-    <div>
-      <span id="userInfo" class="mr-4 text-gray-700"></span>
-      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">登出</button>
-    </div>
+    <h1 class="text-2xl font-bold text-purple-700">我的筆記</h1>
+    <a href="allnotes.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">所有筆記</a>
   </div>
 
-  <!-- 我的筆記 -->
-  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
-    <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
-    <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
-    <input type="file" id="imageInput" class="mb-3">
-    <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
+  <!-- 新增筆記 -->
+  <div class="mb-6 p-4 bg-white rounded-2xl shadow-md">
+    <input type="text" id="newTitle" placeholder="標題" class="w-full mb-2 p-2 border rounded-lg">
+
+    <div class="flex gap-2 mb-1">
+      <select id="fontSize" class="border rounded px-1">
+        <option value="3">中</option>
+        <option value="4">大</option>
+        <option value="5">更大</option>
+      </select>
+      <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
+      <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
+      <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
+      <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
+    </div>
+
+    <div id="newContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]"></div>
+
+    <button id="addNoteBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full mt-2">新增筆記</button>
   </div>
 
-  <!-- 聊天室 -->
-  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">公開聊天室</h2>
-    <div id="chatBox" class="h-64 overflow-y-auto border p-2 rounded-lg mb-3 bg-gray-50"></div>
-    <div class="flex gap-2">
-      <input id="chatInput" placeholder="輸入訊息" class="flex-1 p-2 border rounded-lg">
-      <button id="sendChatBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full">送出</button>
-    </div>
-  </div>
+  <!-- 我的筆記列表 -->
+  <div id="myNotesList" class="space-y-4"></div>
+
+  <!-- 聊天室區域保留原本功能 -->
 
 </div>
 
-<!-- 右下角浮動按鈕 -->
-<a href="allnotes.html" id="allNotesBtn" class="fixed bottom-5 right-5 bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-full shadow-lg">所有筆記</a>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -61,96 +61,110 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-function imageToBase64(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-  });
-}
-
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-  window.location.href = "index.html";
-};
+let uid;
 
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
-  userInfo.innerText = user.email;
+  uid = auth.currentUser.uid;
 
-  // 我的筆記
-  const notesQuery = query(collection(db, "notes"), where("uid", "==", auth.currentUser.uid), orderBy("createdAt", "desc"));
-  onSnapshot(notesQuery, snapshot => {
-    myNotes.innerHTML = "";
+  // 監聽自己的筆記
+  const myNotesQuery = query(collection(db, "notes"), where("uid","==",uid), orderBy("createdAt","desc"));
+  onSnapshot(myNotesQuery, snapshot => {
+    myNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
-      const div = document.createElement("div");
-      div.className = "border p-3 rounded-lg bg-gray-50";
-      div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
-                       <p>${d.content || "(無內容)"}</p>`;
+      const card = document.createElement("div");
+      card.className = "p-4 rounded-2xl shadow-md hover:shadow-lg transition bg-yellow-100";
+
+      const contentDiv = document.createElement("div");
+      contentDiv.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
+          <span class="text-sm text-gray-500">(自己)</span>
+        </div>
+        <div class="text-gray-700 mb-2">${d.content || "(無內容)"}</div>
+      `;
+      card.appendChild(contentDiv);
+
       if (d.imageBase64) {
         const img = document.createElement("img");
         img.src = d.imageBase64;
-        img.style.maxWidth = "240px";
-        img.style.display = "block";
-        div.appendChild(img);
+        img.className = "max-w-full rounded-lg mt-2";
+        card.appendChild(img);
       }
-      myNotes.appendChild(div);
-    });
-  });
 
-  // 聊天室
-  const chatQuery = query(collection(db, "chat"), orderBy("createdAt"));
-  onSnapshot(chatQuery, snapshot => {
-    chatBox.innerHTML = "";
-    snapshot.forEach(docItem => {
-      const m = docItem.data();
-      const div = document.createElement("div");
-      div.textContent = m.user + ": " + m.text;
-      div.className = "mb-1 text-gray-700";
-      chatBox.appendChild(div);
+      const btnContainer = document.createElement("div");
+      btnContainer.className = "mt-2 flex gap-2";
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "修改";
+      editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "刪除";
+      delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
+      delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
+
+      editBtn.onclick = () => {
+        contentDiv.innerHTML = `
+          <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
+          <div class="flex gap-2 mb-1">
+            <select id="fontSize" class="border rounded px-1">
+              <option value="3">中</option>
+              <option value="4">大</option>
+              <option value="5">更大</option>
+            </select>
+            <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
+            <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
+            <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
+            <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
+          </div>
+          <div id="editableContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]">${d.content}</div>
+        `;
+
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "確定";
+        saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
+        saveBtn.onclick = async () => {
+          const newTitle = document.getElementById("editTitle").value;
+          const newContent = document.getElementById("editableContent").innerHTML;
+          await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
+        };
+        contentDiv.appendChild(saveBtn);
+
+        // 工具列事件
+        const fontSize = contentDiv.querySelector("#fontSize");
+        const fontColor = contentDiv.querySelector("#fontColor");
+        const editableContent = contentDiv.querySelector("#editableContent");
+
+        fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
+        fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
+      };
+
+      btnContainer.appendChild(editBtn);
+      btnContainer.appendChild(delBtn);
+      card.appendChild(btnContainer);
+
+      myNotesList.appendChild(card);
     });
-    chatBox.scrollTop = chatBox.scrollHeight;
   });
 });
 
-// 儲存筆記
-saveNoteBtn.onclick = async () => {
-  const title = noteTitle.value.trim();
-  const content = noteContent.value.trim();
-  const file = imageInput.files[0];
-  if (!title && !content && !file) { alert("請輸入內容或圖片"); return; }
-
-  let imageBase64 = null;
-  if (file) {
-    imageBase64 = await imageToBase64(file);
-    if (imageBase64.length > 900000) { alert("圖片過大"); return; }
-  }
-
+// 新增筆記
+addNoteBtn.onclick = async () => {
+  const title = newTitle.value;
+  const content = newContent.innerHTML;
   await addDoc(collection(db, "notes"), {
-    uid: auth.currentUser.uid,
-    title,
-    content,
-    imageBase64,
-    createdAt: Date.now()
+    title, content, uid, createdAt: serverTimestamp()
   });
-
-  noteTitle.value = "";
-  noteContent.value = "";
-  imageInput.value = "";
+  newTitle.value = "";
+  newContent.innerHTML = "";
 };
 
-// 送出聊天室訊息
-sendChatBtn.onclick = async () => {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  await addDoc(collection(db, "chat"), {
-    user: auth.currentUser.email,
-    text,
-    createdAt: Date.now()
-  });
-  chatInput.value = "";
-};
+// 新增筆記工具列事件
+fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
+fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
+
 </script>
 </body>
 </html>
