@@ -7,7 +7,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
 
-<div class="max-w-7xl mx-auto">
+<div class="max-w-5xl mx-auto">
 
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold text-purple-700">所有筆記</h1>
@@ -16,19 +16,8 @@
 
   <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
 
-  <div class="grid grid-cols-2 gap-6">
-    <!-- 我的筆記區 -->
-    <div>
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
-      <div id="myNotesList" class="space-y-4"></div>
-    </div>
-
-    <!-- 大家的筆記區 -->
-    <div>
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">大家的筆記</h2>
-      <div id="allNotesList" class="space-y-4"></div>
-    </div>
-  </div>
+  <!-- 所有筆記區 -->
+  <div id="allNotesList" class="space-y-4"></div>
 
 </div>
 
@@ -53,80 +42,70 @@ const db = getFirestore(app);
 
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
-
   const uid = auth.currentUser.uid;
 
-  // 我的筆記
-  const myNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
-  onSnapshot(myNotesQuery, snapshot => {
-    myNotesList.innerHTML = "";
-    snapshot.forEach(docItem => {
-      const d = docItem.data();
-      const isMine = d.uid === uid;
-      const card = document.createElement("div");
-      card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
-      card.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-          <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
-          <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
-        </div>
-        <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
-      `;
-      if (d.imageBase64) {
-        const img = document.createElement("img");
-        img.src = d.imageBase64;
-        img.className = "max-w-full rounded-lg mt-2";
-        card.appendChild(img);
-      }
-
-      // 如果是自己的筆記，加上編輯/刪除按鈕
-      if (isMine) {
-        const btnContainer = document.createElement("div");
-        btnContainer.className = "mt-2 flex gap-2";
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "刪除";
-        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
-        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
-
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "修改";
-        editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
-        editBtn.onclick = async () => {
-          const newTitle = prompt("輸入新的標題", d.title) || d.title;
-          const newContent = prompt("輸入新的內容", d.content) || d.content;
-          await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
-        };
-
-        btnContainer.appendChild(editBtn);
-        btnContainer.appendChild(delBtn);
-        card.appendChild(btnContainer);
-      }
-
-      myNotesList.appendChild(card);
-    });
-  });
-
-  // 大家的筆記
+  // 監聽所有筆記
   const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
   onSnapshot(allNotesQuery, snapshot => {
     allNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
       const isMine = d.uid === uid;
+
       const card = document.createElement("div");
       card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
-      card.innerHTML = `
+
+      const contentDiv = document.createElement("div");
+      contentDiv.innerHTML = `
         <div class="flex justify-between items-center mb-2">
           <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
           <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
         </div>
         <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
       `;
+      card.appendChild(contentDiv);
+
       if (d.imageBase64) {
         const img = document.createElement("img");
         img.src = d.imageBase64;
         img.className = "max-w-full rounded-lg mt-2";
         card.appendChild(img);
+      }
+
+      // 自己的筆記，加修改/刪除功能
+      if (isMine) {
+        const btnContainer = document.createElement("div");
+        btnContainer.className = "mt-2 flex gap-2";
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "修改";
+        editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "刪除";
+        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
+        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
+
+        editBtn.onclick = () => {
+          // 變成輸入框
+          contentDiv.innerHTML = `
+            <input type="text" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg" id="editTitle">
+            <textarea class="w-full p-1 border rounded-lg" id="editContent">${d.content}</textarea>
+          `;
+          const saveBtn = document.createElement("button");
+          saveBtn.textContent = "確定";
+          saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
+          saveBtn.onclick = async () => {
+            const newTitle = document.getElementById("editTitle").value;
+            const newContent = document.getElementById("editContent").value;
+            await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
+          };
+          contentDiv.appendChild(saveBtn);
+        };
+
+        btnContainer.appendChild(editBtn);
+        btnContainer.appendChild(delBtn);
+        card.appendChild(btnContainer);
       }
 
       allNotesList.appendChild(card);
@@ -137,12 +116,10 @@ onAuthStateChanged(auth, user => {
 // 搜尋功能
 searchNotes.oninput = () => {
   const keyword = searchNotes.value.toLowerCase();
-  [myNotesList, allNotesList].forEach(list => {
-    list.querySelectorAll("div").forEach(card => {
-      const title = card.querySelector("h4").innerText.toLowerCase();
-      const content = card.querySelector("p").innerText.toLowerCase();
-      card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
-    });
+  allNotesList.querySelectorAll("div").forEach(card => {
+    const title = card.querySelector("h4").innerText.toLowerCase();
+    const content = card.querySelector("p")?.innerText.toLowerCase() || "";
+    card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
   });
 };
 </script>
