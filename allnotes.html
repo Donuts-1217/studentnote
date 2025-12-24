@@ -35,7 +35,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -57,17 +57,18 @@ onAuthStateChanged(auth, user => {
   const uid = auth.currentUser.uid;
 
   // 我的筆記
-  const myNotesQuery = query(collection(db, "notes"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+  const myNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
   onSnapshot(myNotesQuery, snapshot => {
     myNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
+      const isMine = d.uid === uid;
       const card = document.createElement("div");
-      card.className = "bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
+      card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
       card.innerHTML = `
         <div class="flex justify-between items-center mb-2">
           <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
-          <span class="text-sm text-gray-500">(自己)</span>
+          <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
         </div>
         <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
       `;
@@ -77,6 +78,30 @@ onAuthStateChanged(auth, user => {
         img.className = "max-w-full rounded-lg mt-2";
         card.appendChild(img);
       }
+
+      // 如果是自己的筆記，加上編輯/刪除按鈕
+      if (isMine) {
+        const btnContainer = document.createElement("div");
+        btnContainer.className = "mt-2 flex gap-2";
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "刪除";
+        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
+        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "修改";
+        editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
+        editBtn.onclick = async () => {
+          const newTitle = prompt("輸入新的標題", d.title) || d.title;
+          const newContent = prompt("輸入新的內容", d.content) || d.content;
+          await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
+        };
+
+        btnContainer.appendChild(editBtn);
+        btnContainer.appendChild(delBtn);
+        card.appendChild(btnContainer);
+      }
+
       myNotesList.appendChild(card);
     });
   });
@@ -87,12 +112,13 @@ onAuthStateChanged(auth, user => {
     allNotesList.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
+      const isMine = d.uid === uid;
       const card = document.createElement("div");
-      card.className = "bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
+      card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
       card.innerHTML = `
         <div class="flex justify-between items-center mb-2">
           <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
-          <span class="text-sm text-gray-500">${d.uid === uid ? "(自己)" : "他人"}</span>
+          <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
         </div>
         <p class="text-gray-700 mb-2">${d.content || "(無內容)"}</p>
       `;
@@ -102,12 +128,13 @@ onAuthStateChanged(auth, user => {
         img.className = "max-w-full rounded-lg mt-2";
         card.appendChild(img);
       }
+
       allNotesList.appendChild(card);
     });
   });
 });
 
-// 搜尋功能（同時搜尋兩邊）
+// 搜尋功能
 searchNotes.oninput = () => {
   const keyword = searchNotes.value.toLowerCase();
   [myNotesList, allNotesList].forEach(list => {
