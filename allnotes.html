@@ -44,7 +44,6 @@ onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   const uid = auth.currentUser.uid;
 
-  // 監聽所有筆記
   const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
   onSnapshot(allNotesQuery, snapshot => {
     allNotesList.innerHTML = "";
@@ -86,14 +85,20 @@ onAuthStateChanged(auth, user => {
         delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
 
         editBtn.onclick = () => {
-          // 變成富文字編輯器
           contentDiv.innerHTML = `
             <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
             <div class="flex gap-2 mb-1">
               <select id="fontSize" class="border rounded px-1">
-                <option value="3">中</option>
-                <option value="4">大</option>
-                <option value="5">更大</option>
+                <option value="10">10px</option>
+                <option value="12">12px</option>
+                <option value="14">14px</option>
+                <option value="16">16px</option>
+                <option value="18">18px</option>
+                <option value="20">20px</option>
+                <option value="24">24px</option>
+                <option value="28">28px</option>
+                <option value="32">32px</option>
+                <option value="40">40px</option>
               </select>
               <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
               <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
@@ -113,11 +118,8 @@ onAuthStateChanged(auth, user => {
           };
           contentDiv.appendChild(saveBtn);
 
-          // 設定工具列事件
           const fontSize = contentDiv.querySelector("#fontSize");
           const fontColor = contentDiv.querySelector("#fontColor");
-          const editableContent = contentDiv.querySelector("#editableContent");
-
           fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
           fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
         };
@@ -130,17 +132,17 @@ onAuthStateChanged(auth, user => {
       allNotesList.appendChild(card);
     });
   });
-});
 
-// 搜尋功能
-searchNotes.oninput = () => {
-  const keyword = searchNotes.value.toLowerCase();
-  allNotesList.querySelectorAll("div").forEach(card => {
-    const title = card.querySelector("h4").innerText.toLowerCase();
-    const content = card.querySelector("#editableContent")?.innerText.toLowerCase() || card.querySelector("div")?.innerText.toLowerCase() || "";
-    card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
-  });
-};
+  // 搜尋功能
+  searchNotes.oninput = () => {
+    const keyword = searchNotes.value.toLowerCase();
+    allNotesList.querySelectorAll("div").forEach(card => {
+      const title = card.querySelector("h4").innerText.toLowerCase();
+      const content = card.querySelector("#editableContent")?.innerText.toLowerCase() || card.querySelector("div")?.innerText.toLowerCase() || "";
+      card.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
+    });
+  };
+});
 </script>
 </body>
 </html>
