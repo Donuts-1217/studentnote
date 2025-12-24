@@ -2,27 +2,20 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>所有筆記</title>
+  <title>搜尋結果</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
 <div class="max-w-5xl mx-auto">
-
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">所有筆記</h1>
-    <a href="main.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">回我的筆記</a>
-  </div>
-
-  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
-
-  <!-- 所有筆記區 -->
-  <div id="allNotesList" class="space-y-4"></div>
+  <h1 class="text-2xl font-bold text-purple-700 mb-6">搜尋結果</h1>
+  <a href="allnotes.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full mb-4 inline-block">回所有筆記</a>
+  <div id="searchResults" class="space-y-4"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -38,16 +31,23 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+const urlParams = new URLSearchParams(window.location.search);
+const keyword = urlParams.get("query")?.toLowerCase() || "";
+
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   const uid = auth.currentUser.uid;
 
   const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt","desc"));
   onSnapshot(allNotesQuery, snapshot => {
-    allNotesList.innerHTML = "";
+    searchResults.innerHTML = "";
     snapshot.forEach(docItem => {
       const d = docItem.data();
       const isMine = d.uid === uid;
+      const title = (d.title||"").toLowerCase();
+      const content = (d.content||"").toLowerCase();
+      if (!title.includes(keyword) && !content.includes(keyword)) return;
+
       const card = document.createElement("div");
       card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
 
@@ -107,6 +107,7 @@ onAuthStateChanged(auth, user => {
             await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
           };
           contentDiv.appendChild(saveBtn);
+
           const fontSize = contentDiv.querySelector("#fontSize");
           const fontColor = contentDiv.querySelector("#fontColor");
           fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
@@ -117,18 +118,10 @@ onAuthStateChanged(auth, user => {
         btnContainer.appendChild(delBtn);
         card.appendChild(btnContainer);
       }
-      allNotesList.appendChild(card);
+
+      searchResults.appendChild(card);
     });
   });
-
-  // 搜尋框跳轉 search.html
-  searchNotes.onkeydown = (e) => {
-    if (e.key === "Enter") {
-      const keyword = searchNotes.value.trim();
-      if (!keyword) return;
-      window.location.href = `search.html?query=${encodeURIComponent(keyword)}`;
-    }
-  };
 });
 </script>
 </body>
