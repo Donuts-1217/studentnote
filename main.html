@@ -1,58 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>筆記系統主頁</title>
+  <title>ClassQuest - 主頁</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
 
-<h2>筆記上傳與聊天室</h2>
+<div class="max-w-7xl mx-auto p-4">
 
-<div id="userInfo"></div>
-<button id="logoutBtn">登出</button>
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-purple-700">ClassQuest</h1>
+    <div>
+      <span id="userInfo" class="mr-4 text-gray-700"></span>
+      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">登出</button>
+    </div>
+  </div>
 
-<hr>
+  <!-- 筆記上傳區 -->
+  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增筆記</h2>
+    <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
+    <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
+    <input type="file" id="imageInput" class="mb-3">
+    <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
+  </div>
 
-<h3>搜尋筆記</h3>
-<input id="searchInput" placeholder="輸入關鍵字">
-<button id="searchBtn">搜尋</button>
-<div id="searchResult"></div>
+  <!-- 筆記搜尋區 -->
+  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">搜尋筆記</h2>
+    <div class="flex gap-2 mb-3">
+      <input id="searchInput" placeholder="輸入關鍵字" class="flex-1 p-2 border rounded-lg">
+      <button id="searchBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 rounded-full">搜尋</button>
+    </div>
+    <div id="searchResult" class="space-y-3"></div>
+  </div>
 
-<hr>
+  <!-- 我的筆記列表 -->
+  <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
+    <div id="myNotes" class="space-y-4"></div>
+  </div>
 
-<h3>新增筆記</h3>
-<input id="noteTitle" placeholder="標題"><br>
-<textarea id="noteContent" placeholder="內容"></textarea><br>
+  <!-- 公開聊天室 -->
+  <div class="bg-white rounded-2xl shadow-md p-6">
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">公開聊天室</h2>
+    <div id="chatBox" class="h-64 overflow-y-auto border p-2 rounded-lg mb-3 bg-gray-50"></div>
+    <div class="flex gap-2">
+      <input id="chatInput" placeholder="輸入訊息" class="flex-1 p-2 border rounded-lg">
+      <button id="sendChatBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full">送出</button>
+    </div>
+  </div>
 
-<input type="file" id="imageInput">
-<button id="saveNoteBtn">儲存筆記</button>
-
-<div id="myNotes"></div>
-
-<hr>
-
-<h3>公共聊天室</h3>
-<div id="chatBox" style="height:200px;overflow-y:auto;border:1px solid #000"></div>
-<input id="chatInput" placeholder="輸入訊息">
-<button id="sendChatBtn">送出</button>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  signOut 
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { 
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -83,8 +89,7 @@ onAuthStateChanged(auth, user => {
     window.location.href = "index.html";
     return;
   }
-
-  userInfo.innerText = "登入帳號：" + user.email;
+  userInfo.innerText = user.email;
   loadMyNotes();
 });
 
@@ -96,93 +101,88 @@ logoutBtn.onclick = async () => {
 
 // 儲存筆記
 saveNoteBtn.onclick = async () => {
-  const title = noteTitle.value;
-  const content = noteContent.value;
+  const title = noteTitle.value.trim();
+  const content = noteContent.value.trim();
   const file = imageInput.files[0];
 
+  if (!title && !content && !file) { alert("請輸入內容或圖片"); return; }
+
   let imageBase64 = null;
-  if (file) imageBase64 = await imageToBase64(file);
+  if (file) {
+    imageBase64 = await imageToBase64(file);
+    if (imageBase64.length > 900000) { alert("圖片過大"); return; }
+  }
 
   await addDoc(collection(db, "notes"), {
     uid: auth.currentUser.uid,
-    title,
-    content,
-    imageBase64,
-    createdAt: Date.now()
+    title, content, imageBase64, createdAt: Date.now()
   });
 
-  alert("已儲存");
+  noteTitle.value = "";
+  noteContent.value = "";
+  imageInput.value = "";
   loadMyNotes();
 };
 
 // 讀取自己的筆記
 async function loadMyNotes() {
-  const q = query(
-    collection(db, "notes"),
-    where("uid", "==", auth.currentUser.uid)
-  );
+  const q = query(collection(db, "notes"), where("uid", "==", auth.currentUser.uid));
   const result = await getDocs(q);
-
   myNotes.innerHTML = "";
 
   result.forEach(doc => {
     const d = doc.data();
     const div = document.createElement("div");
-    div.innerHTML = `<h4>${d.title}</h4><p>${d.content}</p>`;
+    div.className = "border p-3 rounded-lg bg-gray-50";
+    div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4><p>${d.content || "(無內容)"}</p>`;
     if (d.imageBase64) {
       const img = document.createElement("img");
       img.src = d.imageBase64;
-      img.style.maxWidth = "200px";
+      img.style.maxWidth = "240px";
+      img.style.display = "block";
       div.appendChild(img);
     }
     myNotes.appendChild(div);
   });
 }
 
-// 搜尋
+// 搜尋筆記
 searchBtn.onclick = async () => {
-  const keyword = searchInput.value;
+  const keyword = searchInput.value.trim();
+  if (!keyword) return;
   const result = await getDocs(collection(db, "notes"));
   searchResult.innerHTML = "";
-
   result.forEach(doc => {
     const d = doc.data();
-    if (d.title.includes(keyword) || d.content.includes(keyword)) {
+    if ((d.title && d.title.includes(keyword)) || (d.content && d.content.includes(keyword))) {
       const div = document.createElement("div");
-      div.innerHTML = `<b>${d.title}</b> - ${d.content}`;
+      div.className = "border p-2 rounded-lg bg-gray-50";
+      div.innerHTML = `<b>${d.title || "(無標題)"}</b> - ${d.content || "(無內容)"}`;
       searchResult.appendChild(div);
     }
   });
 };
 
-// 聊天室
-onSnapshot(
-  query(collection(db, "chat"), orderBy("createdAt")),
-  snapshot => {
-    chatBox.innerHTML = "";
-    snapshot.forEach(doc => {
-      const m = doc.data();
-      const div = document.createElement("div");
-      div.textContent = m.user + ": " + m.text;
-      chatBox.appendChild(div);
-    });
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-);
-
-// 發送訊息
-sendChatBtn.onclick = async () => {
-  const text = chatInput.value;
-
-  await addDoc(collection(db, "chat"), {
-    user: auth.currentUser.email,
-    text,
-    createdAt: Date.now()
+// 聊天室即時監聽
+onSnapshot(query(collection(db, "chat"), orderBy("createdAt")), snapshot => {
+  chatBox.innerHTML = "";
+  snapshot.forEach(doc => {
+    const m = doc.data();
+    const div = document.createElement("div");
+    div.textContent = m.user + ": " + m.text;
+    div.className = "mb-1 text-gray-700";
+    chatBox.appendChild(div);
   });
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
 
+// 送出聊天訊息
+sendChatBtn.onclick = async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  await addDoc(collection(db, "chat"), { user: auth.currentUser.email, text, createdAt: Date.now() });
   chatInput.value = "";
 };
 </script>
-
 </body>
 </html>

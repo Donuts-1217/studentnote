@@ -1,22 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>Google 登入</title>
+  <title>ClassQuest - 登入</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 h-screen flex items-center justify-center">
 
-<h2>筆記系統登入</h2>
+<div class="bg-white rounded-3xl shadow-xl p-10 w-96 text-center">
+  <h1 class="text-3xl font-bold mb-6 text-gray-700">ClassQuest</h1>
+  <p class="mb-6 text-gray-500">使用 Google 登入開始使用筆記與聊天室</p>
 
-<button id="googleLoginBtn">使用 Google 登入</button>
+  <button id="googleLoginBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-semibold shadow-md">
+    使用 Google 登入
+  </button>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { 
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -32,12 +34,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Google 登入
 googleLoginBtn.onclick = async () => {
   await signInWithPopup(auth, provider);
   window.location.href = "main.html";
 };
 </script>
-
 </body>
 </html>
