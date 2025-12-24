@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>ClassQuest - 主頁</title>
+  <title>NoteNote - 主頁</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -11,7 +11,7 @@
 
   <!-- Header -->
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">ClassQuest</h1>
+    <h1 class="text-2xl font-bold text-purple-700">NoteNote</h1>
     <div>
       <span id="userInfo" class="mr-4 text-gray-700"></span>
       <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">登出</button>
@@ -20,11 +20,12 @@
 
   <!-- 筆記上傳區 -->
   <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增筆記</h2>
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增 / 編輯筆記</h2>
     <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
     <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
     <input type="file" id="imageInput" class="mb-3">
     <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
+    <input type="hidden" id="editNoteId">
   </div>
 
   <!-- 筆記搜尋區 -->
@@ -58,7 +59,9 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { 
+  getFirestore, collection, addDoc, getDocs, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -76,22 +79,12 @@ const db = getFirestore(app);
 
 // Base64 轉換
 function imageToBase64(file) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
   });
 }
-
-// 驗證狀態
-onAuthStateChanged(auth, user => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
-  userInfo.innerText = user.email;
-  loadMyNotes();
-});
 
 // 登出
 logoutBtn.onclick = async () => {
@@ -99,11 +92,19 @@ logoutBtn.onclick = async () => {
   window.location.href = "index.html";
 };
 
-// 儲存筆記
+// 驗證狀態
+onAuthStateChanged(auth, user => {
+  if (!user) { window.location.href = "index.html"; return; }
+  userInfo.innerText = user.email;
+  loadMyNotes();
+});
+
+// 儲存筆記 (新增 / 編輯)
 saveNoteBtn.onclick = async () => {
   const title = noteTitle.value.trim();
   const content = noteContent.value.trim();
   const file = imageInput.files[0];
+  const editId = editNoteId.value;
 
   if (!title && !content && !file) { alert("請輸入內容或圖片"); return; }
 
@@ -113,28 +114,48 @@ saveNoteBtn.onclick = async () => {
     if (imageBase64.length > 900000) { alert("圖片過大"); return; }
   }
 
-  await addDoc(collection(db, "notes"), {
-    uid: auth.currentUser.uid,
-    title, content, imageBase64, createdAt: Date.now()
-  });
+  if (editId) {
+    // 編輯筆記
+    const docRef = doc(db, "notes", editId);
+    await updateDoc(docRef, { title, content, imageBase64 });
+    editNoteId.value = "";
+    saveNoteBtn.innerText = "儲存筆記";
+  } else {
+    // 新增筆記
+    await addDoc(collection(db, "notes"), {
+      uid: auth.currentUser.uid,
+      title, content, imageBase64, createdAt: Date.now()
+    });
+  }
 
   noteTitle.value = "";
   noteContent.value = "";
   imageInput.value = "";
+
   loadMyNotes();
 };
 
 // 讀取自己的筆記
 async function loadMyNotes() {
-  const q = query(collection(db, "notes"), where("uid", "==", auth.currentUser.uid));
+  if (!auth.currentUser) return;
+
+  const q = query(
+    collection(db, "notes"),
+    where("uid", "==", auth.currentUser.uid),
+    orderBy("createdAt", "desc")
+  );
+
   const result = await getDocs(q);
   myNotes.innerHTML = "";
 
-  result.forEach(doc => {
-    const d = doc.data();
+  result.forEach(docItem => {
+    const d = docItem.data();
     const div = document.createElement("div");
     div.className = "border p-3 rounded-lg bg-gray-50";
-    div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4><p>${d.content || "(無內容)"}</p>`;
+
+    div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
+                     <p>${d.content || "(無內容)"}</p>`;
+
     if (d.imageBase64) {
       const img = document.createElement("img");
       img.src = d.imageBase64;
@@ -142,6 +163,31 @@ async function loadMyNotes() {
       img.style.display = "block";
       div.appendChild(img);
     }
+
+    // 編輯按鈕
+    const editBtn = document.createElement("button");
+    editBtn.innerText = "編輯";
+    editBtn.className = "bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-full mr-2 mt-2";
+    editBtn.onclick = () => {
+      noteTitle.value = d.title;
+      noteContent.value = d.content;
+      editNoteId.value = docItem.id;
+      saveNoteBtn.innerText = "更新筆記";
+    };
+    div.appendChild(editBtn);
+
+    // 刪除按鈕
+    const delBtn = document.createElement("button");
+    delBtn.innerText = "刪除";
+    delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full mt-2";
+    delBtn.onclick = async () => {
+      if (confirm("確定刪除這筆筆記嗎？")) {
+        await deleteDoc(doc(db, "notes", docItem.id));
+        loadMyNotes();
+      }
+    };
+    div.appendChild(delBtn);
+
     myNotes.appendChild(div);
   });
 }
@@ -152,8 +198,8 @@ searchBtn.onclick = async () => {
   if (!keyword) return;
   const result = await getDocs(collection(db, "notes"));
   searchResult.innerHTML = "";
-  result.forEach(doc => {
-    const d = doc.data();
+  result.forEach(docItem => {
+    const d = docItem.data();
     if ((d.title && d.title.includes(keyword)) || (d.content && d.content.includes(keyword))) {
       const div = document.createElement("div");
       div.className = "border p-2 rounded-lg bg-gray-50";
@@ -166,8 +212,8 @@ searchBtn.onclick = async () => {
 // 聊天室即時監聽
 onSnapshot(query(collection(db, "chat"), orderBy("createdAt")), snapshot => {
   chatBox.innerHTML = "";
-  snapshot.forEach(doc => {
-    const m = doc.data();
+  snapshot.forEach(docItem => {
+    const m = docItem.data();
     const div = document.createElement("div");
     div.textContent = m.user + ": " + m.text;
     div.className = "mb-1 text-gray-700";
