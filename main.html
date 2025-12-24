@@ -60,7 +60,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { 
-  getFirestore, collection, addDoc, getDocs, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc 
+  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -92,11 +92,62 @@ logoutBtn.onclick = async () => {
   window.location.href = "index.html";
 };
 
-// 驗證狀態
+// 驗證狀態 + 監聽自己的筆記
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   userInfo.innerText = user.email;
-  loadMyNotes();
+
+  const notesQuery = query(
+    collection(db, "notes"),
+    where("uid", "==", auth.currentUser.uid),
+    orderBy("createdAt", "desc")
+  );
+
+  // 即時監聽自己的筆記
+  onSnapshot(notesQuery, snapshot => {
+    myNotes.innerHTML = "";
+    snapshot.forEach(docItem => {
+      const d = docItem.data();
+      const div = document.createElement("div");
+      div.className = "border p-3 rounded-lg bg-gray-50";
+
+      div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
+                       <p>${d.content || "(無內容)"}</p>`;
+
+      if (d.imageBase64) {
+        const img = document.createElement("img");
+        img.src = d.imageBase64;
+        img.style.maxWidth = "240px";
+        img.style.display = "block";
+        div.appendChild(img);
+      }
+
+      // 編輯按鈕
+      const editBtn = document.createElement("button");
+      editBtn.innerText = "編輯";
+      editBtn.className = "bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-full mr-2 mt-2";
+      editBtn.onclick = () => {
+        noteTitle.value = d.title;
+        noteContent.value = d.content;
+        editNoteId.value = docItem.id;
+        saveNoteBtn.innerText = "更新筆記";
+      };
+      div.appendChild(editBtn);
+
+      // 刪除按鈕
+      const delBtn = document.createElement("button");
+      delBtn.innerText = "刪除";
+      delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full mt-2";
+      delBtn.onclick = async () => {
+        if (confirm("確定刪除這筆筆記嗎？")) {
+          await deleteDoc(doc(db, "notes", docItem.id));
+        }
+      };
+      div.appendChild(delBtn);
+
+      myNotes.appendChild(div);
+    });
+  });
 });
 
 // 儲存筆記 (新增 / 編輯)
@@ -131,66 +182,7 @@ saveNoteBtn.onclick = async () => {
   noteTitle.value = "";
   noteContent.value = "";
   imageInput.value = "";
-
-  loadMyNotes();
 };
-
-// 讀取自己的筆記
-async function loadMyNotes() {
-  if (!auth.currentUser) return;
-
-  const q = query(
-    collection(db, "notes"),
-    where("uid", "==", auth.currentUser.uid),
-    orderBy("createdAt", "desc")
-  );
-
-  const result = await getDocs(q);
-  myNotes.innerHTML = "";
-
-  result.forEach(docItem => {
-    const d = docItem.data();
-    const div = document.createElement("div");
-    div.className = "border p-3 rounded-lg bg-gray-50";
-
-    div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
-                     <p>${d.content || "(無內容)"}</p>`;
-
-    if (d.imageBase64) {
-      const img = document.createElement("img");
-      img.src = d.imageBase64;
-      img.style.maxWidth = "240px";
-      img.style.display = "block";
-      div.appendChild(img);
-    }
-
-    // 編輯按鈕
-    const editBtn = document.createElement("button");
-    editBtn.innerText = "編輯";
-    editBtn.className = "bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-full mr-2 mt-2";
-    editBtn.onclick = () => {
-      noteTitle.value = d.title;
-      noteContent.value = d.content;
-      editNoteId.value = docItem.id;
-      saveNoteBtn.innerText = "更新筆記";
-    };
-    div.appendChild(editBtn);
-
-    // 刪除按鈕
-    const delBtn = document.createElement("button");
-    delBtn.innerText = "刪除";
-    delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full mt-2";
-    delBtn.onclick = async () => {
-      if (confirm("確定刪除這筆筆記嗎？")) {
-        await deleteDoc(doc(db, "notes", docItem.id));
-        loadMyNotes();
-      }
-    };
-    div.appendChild(delBtn);
-
-    myNotes.appendChild(div);
-  });
-}
 
 // 搜尋筆記
 searchBtn.onclick = async () => {
