@@ -5,7 +5,7 @@
   <title>NoteNote</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 min-h-screen relative">
 
 <div class="max-w-7xl mx-auto p-4">
 
@@ -18,23 +18,17 @@
     </div>
   </div>
 
-  <!-- 筆記上傳區 -->
+  <!-- 我的筆記 -->
   <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">新增筆記</h2>
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
     <input id="noteTitle" placeholder="標題" class="w-full mb-3 p-2 border rounded-lg">
     <textarea id="noteContent" placeholder="內容" class="w-full mb-3 p-2 border rounded-lg"></textarea>
     <input type="file" id="imageInput" class="mb-3">
     <button id="saveNoteBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-5 py-2 rounded-full">儲存筆記</button>
   </div>
 
-  <!-- 我的筆記列表 -->
+  <!-- 聊天室 -->
   <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 text-gray-700">我的筆記</h2>
-    <div id="myNotes" class="space-y-4"></div>
-  </div>
-
-  <!-- 公開聊天室 -->
-  <div class="bg-white rounded-2xl shadow-md p-6">
     <h2 class="text-xl font-semibold mb-4 text-gray-700">公開聊天室</h2>
     <div id="chatBox" class="h-64 overflow-y-auto border p-2 rounded-lg mb-3 bg-gray-50"></div>
     <div class="flex gap-2">
@@ -45,14 +39,14 @@
 
 </div>
 
+<!-- 右下角浮動按鈕 -->
+<a href="allnotes.html" id="allNotesBtn" class="fixed bottom-5 right-5 bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-full shadow-lg">所有筆記</a>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { 
-  getFirestore, collection, addDoc, query, where, orderBy, onSnapshot 
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
   authDomain: "classquest-419e1.firebaseapp.com",
@@ -67,7 +61,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Base64 轉換
 function imageToBase64(file) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -76,24 +69,17 @@ function imageToBase64(file) {
   });
 }
 
-// 登出
 logoutBtn.onclick = async () => {
   await signOut(auth);
   window.location.href = "index.html";
 };
 
-// 驗證狀態
 onAuthStateChanged(auth, user => {
   if (!user) { window.location.href = "index.html"; return; }
   userInfo.innerText = user.email;
 
-  // 我的筆記監聽，只抓自己的
-  const notesQuery = query(
-    collection(db, "notes"),
-    where("uid", "==", auth.currentUser.uid),
-    orderBy("createdAt", "desc")
-  );
-
+  // 我的筆記
+  const notesQuery = query(collection(db, "notes"), where("uid", "==", auth.currentUser.uid), orderBy("createdAt", "desc"));
   onSnapshot(notesQuery, snapshot => {
     myNotes.innerHTML = "";
     snapshot.forEach(docItem => {
@@ -113,7 +99,7 @@ onAuthStateChanged(auth, user => {
     });
   });
 
-  // 聊天室監聽
+  // 聊天室
   const chatQuery = query(collection(db, "chat"), orderBy("createdAt"));
   onSnapshot(chatQuery, snapshot => {
     chatBox.innerHTML = "";

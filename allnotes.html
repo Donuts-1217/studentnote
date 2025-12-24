@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>所有筆記</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+
+<div class="max-w-7xl mx-auto">
+
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-purple-700">所有筆記</h1>
+    <a href="main.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">回我的筆記</a>
+  </div>
+
+  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-4 p-2 border rounded-lg">
+
+  <div id="allNotesList" class="space-y-4"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, user => {
+  if (!user) { window.location.href = "index.html"; return; }
+
+  const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt", "desc"));
+  onSnapshot(allNotesQuery, snapshot => {
+    allNotesList.innerHTML = "";
+    snapshot.forEach(docItem => {
+      const d = docItem.data();
+      const div = document.createElement("div");
+      div.className = "border p-3 rounded-lg bg-gray-50";
+      div.innerHTML = `<h4 class="font-semibold">${d.title || "(無標題)"}</h4>
+                       <p>${d.content || "(無內容)"}</p>`;
+      if (d.imageBase64) {
+        const img = document.createElement("img");
+        img.src = d.imageBase64;
+        img.style.maxWidth = "240px";
+        img.style.display = "block";
+        div.appendChild(img);
+      }
+      allNotesList.appendChild(div);
+    });
+  });
+});
+
+// 搜尋功能
+searchNotes.oninput = () => {
+  const keyword = searchNotes.value.toLowerCase();
+  allNotesList.querySelectorAll("div").forEach(div => {
+    const title = div.querySelector("h4").innerText.toLowerCase();
+    const content = div.querySelector("p").innerText.toLowerCase();
+    div.style.display = title.includes(keyword) || content.includes(keyword) ? "block" : "none";
+  });
+};
+</script>
+</body>
+</html>

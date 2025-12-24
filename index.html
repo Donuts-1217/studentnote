@@ -2,42 +2,41 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>NoteNote - 登入</title>
+  <title>NoteNote 登入</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 h-screen flex items-center justify-center">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-10 rounded-2xl shadow-md text-center">
+    <h1 class="text-3xl font-bold mb-6 text-purple-700">NoteNote</h1>
+    <button id="googleLoginBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full">使用 Google 登入</button>
+  </div>
 
-<div class="bg-white rounded-3xl shadow-xl p-10 w-96 text-center">
-  <h1 class="text-3xl font-bold mb-6 text-gray-700">NoteNote</h1>
-  <p class="mb-6 text-gray-500">使用 Google 登入開始使用筆記與聊天室</p>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-  <button id="googleLoginBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-semibold shadow-md">
-    使用 Google 登入
-  </button>
-</div>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+    authDomain: "classquest-419e1.firebaseapp.com",
+    projectId: "classquest-419e1",
+    storageBucket: "classquest-419e1.firebasestorage.app",
+    messagingSenderId: "18905423391",
+    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+    measurementId: "G-0H7STZJVXS"
+  };
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+  onAuthStateChanged(auth, user => {
+    if (user) { window.location.href = "main.html"; }
+  });
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
-googleLoginBtn.onclick = async () => {
-  await signInWithPopup(auth, provider);
-  window.location.href = "main.html";
-};
-</script>
+  googleLoginBtn.onclick = async () => {
+    await signInWithPopup(auth, provider);
+    window.location.href = "main.html";
+  };
+  </script>
 </body>
 </html>
