@@ -4,126 +4,102 @@
   <meta charset="UTF-8">
   <title>Notenote - 所有筆記</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 min-h-screen flex flex-col">
 
-  <div class="max-w-6xl mx-auto p-4 space-y-4">
-
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">所有筆記</h1>
-      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">返回</a>
+<div class="max-w-5xl mx-auto p-4 space-y-4 flex-1 flex flex-col">
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-800">所有筆記</h1>
+    <div class="flex gap-2">
+      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">主頁</a>
+      <button id="logout" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">登出</button>
     </div>
-
-    <div id="allNotes" class="grid md:grid-cols-2 gap-4"></div>
-
   </div>
 
-  <script type="module">
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-      authDomain: "classquest-419e1.firebaseapp.com",
-      projectId: "classquest-419e1",
-      storageBucket: "classquest-419e1.firebasestorage.app",
-      messagingSenderId: "18905423391",
-      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-      measurementId: "G-0H7STZJVXS"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+  <div id="notesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+</div>
 
-    // 刪除筆記
-    window.deleteNote = async (id) => {
-      await db.collection("notes").doc(id).delete();
-    };
+<script type="module">
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+    authDomain: "classquest-419e1.firebaseapp.com",
+    projectId: "classquest-419e1",
+    storageBucket: "classquest-419e1.firebasestorage.app",
+    messagingSenderId: "18905423391",
+    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+    measurementId: "G-0H7STZJVXS"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
 
-    // 修改筆記
-    window.editNote = async (id) => {
-      const docRef = db.collection("notes").doc(id);
-      const docSnap = await docRef.get();
-      const d = docSnap.data();
-      const card = document.getElementById("note-" + id);
+  const notesContainer = document.getElementById("notesContainer");
+  const logout = document.getElementById("logout");
+  logout.onclick = () => auth.signOut().then(() => window.location.href="index.html");
 
-      card.innerHTML = `
-        <input id="editTitle-${id}" class="border p-1 w-full" value="${d.title}">
-        <div contenteditable="true" id="editContent-${id}" class="border p-2 mt-2">${d.content}</div>
-        <button onclick="saveEdit('${id}')" class="px-3 py-1 bg-green-500 text-white rounded-xl mt-2">儲存</button>
-      `;
-    };
+  auth.onAuthStateChanged(user => {
+    if(!user) window.location.href="index.html";
 
-    window.saveEdit = async (id) => {
-      const newTitle = document.getElementById("editTitle-" + id).value;
-      const newContent = document.getElementById("editContent-" + id).innerHTML;
-      await db.collection("notes").doc(id).update({
-        title: newTitle,
-        content: newContent
-      });
-    };
-
-    // 圖片點擊放大
-    function enableImageZoom() {
-      document.querySelectorAll('.note-content img').forEach(img => {
-        img.style.cursor = 'pointer';
-        img.onclick = () => {
-          const overlay = document.createElement('div');
-          overlay.style.position = 'fixed';
-          overlay.style.top = 0;
-          overlay.style.left = 0;
-          overlay.style.width = '100vw';
-          overlay.style.height = '100vh';
-          overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
-          overlay.style.display = 'flex';
-          overlay.style.alignItems = 'center';
-          overlay.style.justifyContent = 'center';
-          overlay.style.zIndex = 9999;
-          overlay.onclick = () => overlay.remove();
-
-          const bigImg = document.createElement('img');
-          bigImg.src = img.src;
-          bigImg.style.maxWidth = '90%';
-          bigImg.style.maxHeight = '90%';
-          bigImg.className = 'rounded-xl shadow-lg';
-          overlay.appendChild(bigImg);
-
-          document.body.appendChild(overlay);
-        };
-      });
-    }
-
-    // 顯示所有筆記
-    const allNotes = document.getElementById("allNotes");
-
-    auth.onAuthStateChanged(user => {
-      if (!user) return;
-
-      db.collection("notes").orderBy("createdAt","desc").onSnapshot(snap => {
-        allNotes.innerHTML = "";
-        snap.forEach(doc => {
-          const d = doc.data();
-          const isMine = d.uid === user.uid;
-          const cardId = "note-" + doc.id;
-          allNotes.innerHTML += `
-            <div id="${cardId}" class="rounded-2xl shadow p-4 ${isMine ? 'bg-yellow-50 border border-yellow-300' : 'bg-white'}">
-              <div class="flex justify-between">
-                <h3 class="font-semibold">${d.title || "未命名"}</h3>
-                <span class="text-sm text-gray-500">${isMine ? '我的' : '其他人'}</span>
-              </div>
-              <div class="mt-2 note-content">${d.content}</div>
-              ${isMine ? `<div class="mt-3 flex gap-2 justify-end">
-                <button onclick="editNote('${doc.id}')" class="px-3 py-1 bg-yellow-400 text-white rounded-xl">修改</button>
-                <button onclick="deleteNote('${doc.id}')" class="px-3 py-1 bg-red-500 text-white rounded-xl">刪除</button>
-              </div>` : ''}
-            </div>
-          `;
+    db.collection("notes").orderBy("createdAt", "desc").onSnapshot(snap => {
+      notesContainer.innerHTML = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        const isMine = d.uid === user.uid;
+        const card = document.createElement("div");
+        card.className = `rounded-2xl shadow p-4 ${isMine ? "bg-yellow-50" : "bg-white"}`;
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <h3 class="font-semibold text-lg">${d.title || "未命名"}</h3>
+            ${isMine ? `<button onclick="editNote('${doc.id}')" class="px-2 py-1 bg-gray-200 rounded-xl text-sm">修改</button>` : ""}
+          </div>
+          <div class="mt-2 content" id="content-${doc.id}">${d.content}</div>
+        `;
+        // 圖片點擊放大
+        card.querySelectorAll("img").forEach(img => {
+          img.style.cursor = "zoom-in";
+          img.onclick = () => {
+            const overlay = document.createElement("div");
+            overlay.className = "fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50";
+            const bigImg = document.createElement("img");
+            bigImg.src = img.src;
+            bigImg.className = "max-h-[90%] max-w-[90%]";
+            overlay.appendChild(bigImg);
+            overlay.onclick = () => overlay.remove();
+            document.body.appendChild(overlay);
+          };
         });
-        enableImageZoom(); // 啟用圖片放大
+
+        notesContainer.appendChild(card);
       });
     });
-  </script>
+  });
+
+  window.editNote = async (id) => {
+    const docRef = db.collection("notes").doc(id);
+    const docSnap = await docRef.get();
+    const d = docSnap.data();
+    const contentDiv = document.getElementById("content-" + id);
+    contentDiv.contentEditable = true;
+    contentDiv.focus();
+    contentDiv.style.border = "1px dashed gray";
+    contentDiv.style.padding = "4px";
+    contentDiv.style.borderRadius = "8px";
+    // 按 Enter 儲存
+    contentDiv.onkeypress = async (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        await docRef.update({ content: contentDiv.innerHTML });
+        contentDiv.contentEditable = false;
+        contentDiv.style.border = "none";
+        contentDiv.style.padding = "0";
+        alert("筆記已更新");
+      }
+    };
+  };
+</script>
+
 </body>
 </html>
