@@ -1,106 +1,55 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>所有筆記</title>
+  <meta charset="UTF-8" />
+  <title>Search</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<style>
-body{font-family:Arial;background:#eef2ff;margin:0;}
-.top{background:#4c6ef5;color:white;padding:15px;}
-.container{padding:20px;}
-.card{
-  background:white;
-  padding:12px;
-  border-radius:12px;
-  box-shadow:0 0 8px rgba(0,0,0,.1);
-  margin-bottom:12px;
-}
-.mine{
-  background:#fff7c2;
-}
-</style>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"></script>
 </head>
 
-<body>
+<body class="bg-gray-100 min-h-screen">
 
-<div class="top">
-  所有筆記
-  <button onclick="location.href='main.html'">返回主頁</button>
-</div>
+  <div class="max-w-5xl mx-auto p-4 space-y-4">
 
-<div class="container" id="noteList"></div>
+    <div class="flex justify-between">
+      <h1 class="text-2xl font-bold">搜尋結果</h1>
+      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">返回</a>
+    </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { 
-  getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <div id="results" class="grid md:grid-cols-2 gap-4"></div>
+  </div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+  <script type="module">
+    const firebaseConfig = {
+      // 你的 firebase config
+    };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-const list = document.getElementById("noteList");
-let currentUid=null;
+    const keyword = new URLSearchParams(window.location.search).get("q") || "";
 
-onAuthStateChanged(auth,user=>{
-  if(!user){
-    location.href="index.html";
-  }else{
-    currentUid=user.uid;
-  }
-});
+    db.collection("notes").get().then(snap => {
+      results.innerHTML = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        const hit =
+          (d.title && d.title.includes(keyword)) ||
+          (d.content && d.content.includes(keyword));
 
-onSnapshot(collection(db,"notes"), snapshot=>{
-  list.innerHTML="";
-  snapshot.forEach(item=>{
-    const d=item.data();
-    const card=document.createElement("div");
-    card.className="card";
+        if (!hit) return;
 
-    if(d.uid===currentUid) card.classList.add("mine");
-
-    card.innerHTML+=`<h3>${d.title||""}</h3>`;
-    card.innerHTML+=`<div>${d.content||""}</div>`;
-    if(d.image){
-      card.innerHTML+=`<img src="${d.image}" style="max-width:100%;border-radius:10px;margin-top:6px;">`;
-    }
-
-    if(d.uid===currentUid){
-      const editBtn=document.createElement("button");
-      editBtn.textContent="修改";
-      editBtn.onclick=async ()=>{
-        const newHTML = prompt("請輸入新的內容(支援HTML)", d.content||"");
-        if(newHTML!=null){
-          await updateDoc(doc(db,"notes",item.id),{content:newHTML});
-        }
-      };
-
-      const delBtn=document.createElement("button");
-      delBtn.textContent="刪除";
-      delBtn.onclick=async ()=>{
-        await deleteDoc(doc(db,"notes",item.id));
-      };
-
-      card.appendChild(editBtn);
-      card.appendChild(delBtn);
-    }
-
-    list.appendChild(card);
-  });
-});
-</script>
-
+        results.innerHTML += `
+          <div class="rounded-2xl shadow p-4 bg-white">
+            <h3 class="font-semibold">${d.title || "未命名"}</h3>
+            <div class="mt-2">${d.content}</div>
+          </div>
+        `;
+      });
+    });
+  </script>
 </body>
 </html>

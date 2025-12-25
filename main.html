@@ -1,249 +1,212 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Main - NoteNote</title>
+  <meta charset="UTF-8" />
+  <title>Main</title>
 
-<style>
-body{
-  font-family:Arial;
-  background:#f4f6ff;
-  margin:0;
-}
-.top{
-  background:#4c6ef5;
-  color:white;
-  padding:15px;
-  display:flex;
-  justify-content:space-between;
-}
-.editorBox{
-  margin:20px;
-  padding:15px;
-  background:white;
-  border-radius:12px;
-  box-shadow:0 0 10px rgba(0,0,0,.1);
-}
-.toolbar button, .toolbar select, .toolbar input{
-  margin-right:6px;
-}
-#editor{
-  min-height:160px;
-  border:1px solid #ccc;
-  padding:10px;
-  border-radius:10px;
-}
-.chatbox{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  height:220px;
-  background:white;
-  border-top:2px solid #ddd;
-  display:flex;
-  flex-direction:column;
-}
-#messages{
-  flex:1;
-  overflow-y:auto;
-  padding:10px;
-}
-.msg{
-  padding:6px 10px;
-  border-radius:10px;
-  background:#e9eeff;
-  margin-bottom:6px;
-}
-</style>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-storage.js"></script>
+
 </head>
 
-<body>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-4 space-y-6">
 
-<div class="top">
-  <div>NoteNote 主頁</div>
-  <div>
-    <button onclick="location.href='allnotes.html'">所有筆記</button>
-    <button onclick="location.href='search.html'">搜尋</button>
-    <button id="logoutBtn">登出</button>
+    <!-- header -->
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold">主頁</h1>
+
+      <div class="space-x-2">
+        <a href="allnotes.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">所有筆記</a>
+        <a href="search.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">搜尋</a>
+      </div>
+    </div>
+
+    <!-- 建立筆記 -->
+    <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+
+      <h2 class="font-semibold text-lg">建立筆記</h2>
+
+      <input id="titleInput"
+        class="w-full border rounded-xl p-2"
+        placeholder="標題">
+
+      <!-- toolbar -->
+      <div class="flex flex-wrap gap-2 items-center bg-gray-50 p-2 rounded-xl border">
+
+        <select id="fontSize" class="border rounded-xl p-1">
+          <option value="12">12</option><option value="14">14</option>
+          <option value="16">16</option><option value="18">18</option>
+          <option value="20">20</option><option value="22">22</option>
+          <option value="24">24</option><option value="28">28</option>
+          <option value="32">32</option><option value="36">36</option>
+        </select>
+
+        <input id="colorPicker" type="color" class="w-8 h-8 rounded">
+
+        <button id="boldBtn" class="px-3 py-1 rounded-xl bg-gray-200 hover:bg-gray-300">B</button>
+        <button id="italicBtn" class="px-3 py-1 rounded-xl bg-gray-200 hover:bg-gray-300">I</button>
+
+        <label class="cursor-pointer px-3 py-1 rounded-xl bg-green-500 text-white hover:bg-green-600">
+          圖片
+          <input id="imageInput" type="file" accept="image/*" class="hidden">
+        </label>
+
+      </div>
+
+      <!-- content -->
+      <div id="editor"
+        contenteditable="true"
+        class="min-h-[150px] border rounded-2xl p-3 bg-white shadow-inner">
+      </div>
+
+      <button id="saveNote"
+        class="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+        儲存筆記
+      </button>
+    </div>
+
+    <!-- 我的筆記 -->
+    <div class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold mb-3">我的筆記</h2>
+      <div id="myNotes" class="grid md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- 聊天室 -->
+    <div class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold mb-3">聊天室</h2>
+
+      <div id="chatBox" class="h-64 overflow-y-auto space-y-2 border rounded-2xl p-3 bg-gray-50"></div>
+
+      <div class="mt-3 flex gap-2">
+        <input id="chatInput" class="flex-1 border rounded-xl p-2" placeholder="輸入訊息…">
+        <button id="sendChat" class="px-4 py-2 bg-blue-600 text-white rounded-xl">送出</button>
+      </div>
+    </div>
+
   </div>
-</div>
 
-<div class="editorBox">
-  <h3>新增筆記</h3>
+  <script type="module">
+    const firebaseConfig = {
+      // 你的 firebase config
+    };
 
-  <input id="titleInput" placeholder="標題" style="width:100%;font-size:16px;padding:8px">
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-  <div class="toolbar">
-    <button onclick="format('bold')">粗體</button>
-    <button onclick="format('italic')">斜體</button>
-    <input type="color" id="colorPicker">
-    <select id="fontSizeSelect">
-      <option value="12px">12</option>
-      <option value="14px">14</option>
-      <option value="16px">16</option>
-      <option value="18px">18</option>
-      <option value="20px">20</option>
-      <option value="22px">22</option>
-      <option value="24px">24</option>
-      <option value="28px">28</option>
-      <option value="32px">32</option>
-      <option value="36px">36</option>
-    </select>
+    // --------------- 富文字工具 ---------------
+    const editor = document.getElementById("editor");
 
-    <input type="file" id="imageInput" accept="image/*">
-  </div>
+    document.getElementById("fontSize").onchange = (e) =>
+      document.execCommand("fontSize", false, "7");
 
-  <div id="editor" contenteditable="true"></div>
+    document.getElementById("boldBtn").onclick = () =>
+      document.execCommand("bold");
 
-  <button id="saveNoteBtn">儲存筆記</button>
-</div>
+    document.getElementById("italicBtn").onclick = () =>
+      document.execCommand("italic");
 
+    document.getElementById("colorPicker").onchange = (e) =>
+      document.execCommand("foreColor", false, e.target.value);
 
-<div class="chatbox">
-  <div id="messages"></div>
+    // --------------- 圖片插入 -----------------
+    imageInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-  <div style="display:flex;padding:8px;">
-    <input id="chatInput" style="flex:1;padding:8px" placeholder="輸入訊息…">
-    <button id="sendBtn">送出</button>
-  </div>
-</div>
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = document.createElement("img");
+        img.src = ev.target.result;
+        img.className = "max-w-full rounded-xl mt-2";
+        editor.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    };
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
-  getAuth, onAuthStateChanged, signOut 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { 
-  getFirestore, collection, addDoc, serverTimestamp,
-  query, orderBy, limit, onSnapshot, deleteDoc, doc, getDocs
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    // --------------- 儲存筆記 -----------------
+    saveNote.onclick = async () => {
+      const user = auth.currentUser;
+      await db.collection("notes").add({
+        uid: user.uid,
+        title: titleInput.value,
+        content: editor.innerHTML,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      editor.innerHTML = "";
+      titleInput.value = "";
+    };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+    // --------------- 顯示自己的筆記 ---------------
+    auth.onAuthStateChanged(user => {
+      db.collection("notes")
+        .where("uid", "==", user.uid)
+        .orderBy("createdAt", "desc")
+        .onSnapshot(snap => {
+          myNotes.innerHTML = "";
+          snap.forEach(doc => {
+            const d = doc.data();
+            myNotes.innerHTML += `
+              <div class="rounded-2xl shadow p-4 bg-yellow-50 border">
+                <div class="flex justify-between">
+                  <h3 class="font-semibold">${d.title || "未命名"}</h3>
+                </div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+                <div class="mt-2">${d.content}</div>
 
-const editor = document.getElementById("editor");
-const colorPicker = document.getElementById("colorPicker");
-const fontSizeSelect = document.getElementById("fontSizeSelect");
+                <div class="mt-3 flex gap-2 justify-end">
+                  <button onclick="deleteNote('${doc.id}')" class="px-3 py-1 bg-red-500 text-white rounded-xl">刪除</button>
+                </div>
+              </div>
+            `;
+          });
+        });
+    });
 
-window.format = (cmd)=>{
-  document.execCommand(cmd,false,null);
-};
+    window.deleteNote = async (id) => {
+      await db.collection("notes").doc(id).delete();
+    };
 
-colorPicker.addEventListener("change",()=>{
-  document.execCommand("foreColor",false,colorPicker.value);
-});
-
-fontSizeSelect.addEventListener("change",()=>{
-  const size = fontSizeSelect.value;
-  document.execCommand("fontSize",false,7);
-  const fonts = editor.getElementsByTagName("font");
-  for(let f of fonts){
-    if(f.size==="7"){
-      f.removeAttribute("size");
-      f.style.fontSize=size;
+    // --------------- 聊天室 -----------------
+    function scrollBottom() {
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
-  }
-});
 
-let imageBase64 = null;
+    sendChat.onclick = async () => {
+      const user = auth.currentUser;
+      await db.collection("chat").add({
+        uid: user.uid,
+        name: user.displayName,
+        text: chatInput.value,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      chatInput.value = "";
+    };
 
-document.getElementById("imageInput").addEventListener("change",e=>{
-  const file = e.target.files[0];
-  if(!file) return;
+    db.collection("chat").orderBy("createdAt").onSnapshot(snap => {
+      chatBox.innerHTML = "";
+      const docs = snap.docs;
 
-  if(!file.type.startsWith("image/")){
-    alert("僅限圖片");
-    return;
-  }
+      // 最多 200 則
+      const start = Math.max(0, docs.length - 200);
 
-  const reader = new FileReader();
-  reader.onload = evt=> imageBase64 = evt.target.result;
-  reader.readAsDataURL(file);
-});
+      docs.slice(start).forEach(doc => {
+        const d = doc.data();
+        chatBox.innerHTML += `
+          <div class="bg-white rounded-xl shadow p-2">
+            <div class="text-sm text-gray-500">${d.name || "User"}</div>
+            <div>${d.text}</div>
+          </div>
+        `;
+      });
 
-
-document.getElementById("saveNoteBtn").onclick = async ()=>{
-  const user = auth.currentUser;
-  if(!user) return;
-
-  await addDoc(collection(db,"notes"),{
-    uid:user.uid,
-    userName:user.displayName || "unknown",
-    title:document.getElementById("titleInput").value,
-    content:editor.innerHTML,
-    image:imageBase64 || null,
-    createdAt:serverTimestamp()
-  });
-
-  alert("儲存完成");
-  editor.innerHTML="";
-  document.getElementById("titleInput").value="";
-  imageBase64=null;
-};
-
-
-document.getElementById("logoutBtn").onclick = async ()=>{
-  await signOut(auth);
-  location.href="index.html";
-};
-
-
-const messagesDiv = document.getElementById("messages");
-const chatInput = document.getElementById("chatInput");
-
-document.getElementById("sendBtn").onclick = async ()=>{
-  const user=auth.currentUser;
-  if(!user) return;
-
-  await addDoc(collection(db,"chat"),{
-    uid:user.uid,
-    name:user.displayName || "user",
-    text:chatInput.value,
-    createdAt:serverTimestamp()
-  });
-
-  chatInput.value="";
-};
-
-const q = query(collection(db,"chat"),orderBy("createdAt","asc"));
-
-onSnapshot(q, async snapshot=>{
-  messagesDiv.innerHTML="";
-
-  if(snapshot.docs.length>200){
-    const extra = snapshot.docs.length-200;
-    for(let i=0;i<extra;i++){
-      await deleteDoc(doc(db,"chat",snapshot.docs[i].id));
-    }
-  }
-
-  snapshot.forEach(docItem=>{
-    const d=docItem.data();
-    const div=document.createElement("div");
-    div.className="msg";
-    div.textContent=`${d.name}: ${d.text}`;
-    messagesDiv.appendChild(div);
-  });
-
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-});
-
-onAuthStateChanged(auth,user=>{
-  if(!user) location.href="index.html";
-});
-</script>
-
+      scrollBottom();
+    });
+  </script>
 </body>
 </html>

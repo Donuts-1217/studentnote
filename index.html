@@ -1,66 +1,38 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>NoteNote - 登入</title>
-
-<style>
-body{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  background:#eef3ff;
-  font-family:Arial;
-}
-.box{
-  background:white;
-  padding:30px;
-  border-radius:15px;
-  box-shadow:0 0 15px rgba(0,0,0,.1);
-  text-align:center;
-}
-button{
-  padding:10px 20px;
-  font-size:16px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-  background:#4c6ef5;
-  color:white;
-}
-</style>
+  <meta charset="UTF-8" />
+  <title>Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"></script>
 </head>
 
-<body>
-<div class="box">
-  <h2>NoteNote</h2>
-  <p>請使用 Google 帳號登入</p>
-  <button id="loginBtn">Google 登入</button>
-</div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md space-y-4 text-center">
+    <h1 class="text-2xl font-bold mb-2">筆記系統</h1>
+    <p class="text-gray-500 mb-4">使用 Google 登入</p>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+    <button id="loginBtn" class="w-full py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+      Google 登入
+    </button>
+  </div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+  <script type="module">
+    const firebaseConfig = {
+      // 你的 firebase config
+    };
 
-document.getElementById("loginBtn").onclick = async () =>{
-  const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth,provider);
-  window.location.href = "main.html";
-};
-</script>
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.getAuth();
+
+    const provider = new firebase.GoogleAuthProvider();
+
+    document.getElementById("loginBtn").onclick = async () => {
+      await firebase.signInWithPopup(auth, provider);
+      window.location.href = "main.html";
+    };
+  </script>
 </body>
 </html>
