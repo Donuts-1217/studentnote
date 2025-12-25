@@ -1,21 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>Login</title>
+  <meta charset="UTF-8">
+  <title>Notenote - 登入</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"></script>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow p-8 w-full max-w-sm text-center space-y-6">
+    <h1 class="text-2xl font-bold">Notenote</h1>
+    <p class="text-gray-500">請使用 Google 帳號登入</p>
 
-  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md space-y-4 text-center">
-    <h1 class="text-2xl font-bold mb-2">筆記系統</h1>
-    <p class="text-gray-500 mb-4">使用 Google 登入</p>
-
-    <button id="loginBtn" class="w-full py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
-      Google 登入
+    <button id="googleLogin" class="w-full px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+      使用 Google 登入
     </button>
   </div>
 
@@ -24,15 +26,28 @@
       // 你的 firebase config
     };
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.getAuth();
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    const provider = new firebase.GoogleAuthProvider();
+    const googleLogin = document.getElementById("googleLogin");
 
-    document.getElementById("loginBtn").onclick = async () => {
-      await firebase.signInWithPopup(auth, provider);
-      window.location.href = "main.html";
+    googleLogin.onclick = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+        // 登入成功後跳轉到主頁
+        window.location.href = "main.html";
+      } catch (err) {
+        alert("登入失敗：" + err.message);
+      }
     };
+
+    // 如果已登入，自動跳轉
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        window.location.href = "main.html";
+      }
+    });
   </script>
 </body>
 </html>
