@@ -1,28 +1,41 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>所有筆記</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>所有筆記</title>
+
+<style>
+body{font-family:Arial;background:#eef2ff;margin:0;}
+.top{background:#4c6ef5;color:white;padding:15px;}
+.container{padding:20px;}
+.card{
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  box-shadow:0 0 8px rgba(0,0,0,.1);
+  margin-bottom:12px;
+}
+.mine{
+  background:#fff7c2;
+}
+</style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-<div class="max-w-5xl mx-auto">
 
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">所有筆記</h1>
-    <a href="main.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">回我的筆記</a>
-  </div>
+<body>
 
-  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
-
-  <!-- 所有筆記區 -->
-  <div id="allNotesList" class="space-y-4"></div>
+<div class="top">
+  所有筆記
+  <button onclick="location.href='main.html'">返回主頁</button>
 </div>
 
+<div class="container" id="noteList"></div>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+  getFirestore, collection, onSnapshot, updateDoc, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -38,98 +51,56 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-onAuthStateChanged(auth, user => {
-  if (!user) { window.location.href = "index.html"; return; }
-  const uid = auth.currentUser.uid;
+const list = document.getElementById("noteList");
+let currentUid=null;
 
-  const allNotesQuery = query(collection(db, "notes"), orderBy("createdAt","desc"));
-  onSnapshot(allNotesQuery, snapshot => {
-    allNotesList.innerHTML = "";
-    snapshot.forEach(docItem => {
-      const d = docItem.data();
-      const isMine = d.uid === uid;
-      const card = document.createElement("div");
-      card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition ${isMine ? "bg-yellow-100" : "bg-white"}`;
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    location.href="index.html";
+  }else{
+    currentUid=user.uid;
+  }
+});
 
-      const contentDiv = document.createElement("div");
-      contentDiv.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-          <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
-          <span class="text-sm text-gray-500">${isMine ? "(自己)" : "他人"}</span>
-        </div>
-        <div class="text-gray-700 mb-2">${d.content || "(無內容)"}</div>
-      `;
-      card.appendChild(contentDiv);
+onSnapshot(collection(db,"notes"), snapshot=>{
+  list.innerHTML="";
+  snapshot.forEach(item=>{
+    const d=item.data();
+    const card=document.createElement("div");
+    card.className="card";
 
-      if (d.imageBase64) {
-        const img = document.createElement("img");
-        img.src = d.imageBase64;
-        img.className = "max-w-full rounded-lg mt-2";
-        card.appendChild(img);
-      }
+    if(d.uid===currentUid) card.classList.add("mine");
 
-      if (isMine) {
-        const btnContainer = document.createElement("div");
-        btnContainer.className = "mt-2 flex gap-2";
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "修改";
-        editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
-
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "刪除";
-        delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
-        delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
-
-        editBtn.onclick = () => {
-          contentDiv.innerHTML = `
-            <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
-            <div class="flex gap-2 mb-1">
-              <select id="fontSize" class="border rounded px-1">
-                <option value="10">10px</option><option value="12">12px</option>
-                <option value="14">14px</option><option value="16">16px</option>
-                <option value="18">18px</option><option value="20">20px</option>
-                <option value="24">24px</option><option value="28">28px</option>
-                <option value="32">32px</option><option value="40">40px</option>
-              </select>
-              <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
-              <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
-              <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
-              <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
-            </div>
-            <div id="editableContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]">${d.content}</div>
-          `;
-          const saveBtn = document.createElement("button");
-          saveBtn.textContent = "確定";
-          saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
-          saveBtn.onclick = async () => {
-            const newTitle = document.getElementById("editTitle").value;
-            const newContent = document.getElementById("editableContent").innerHTML;
-            await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
-          };
-          contentDiv.appendChild(saveBtn);
-          const fontSize = contentDiv.querySelector("#fontSize");
-          const fontColor = contentDiv.querySelector("#fontColor");
-          fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
-          fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
-        };
-
-        btnContainer.appendChild(editBtn);
-        btnContainer.appendChild(delBtn);
-        card.appendChild(btnContainer);
-      }
-      allNotesList.appendChild(card);
-    });
-  });
-
-  // 搜尋框跳轉 search.html
-  searchNotes.onkeydown = (e) => {
-    if (e.key === "Enter") {
-      const keyword = searchNotes.value.trim();
-      if (!keyword) return;
-      window.location.href = `search.html?query=${encodeURIComponent(keyword)}`;
+    card.innerHTML+=`<h3>${d.title||""}</h3>`;
+    card.innerHTML+=`<div>${d.content||""}</div>`;
+    if(d.image){
+      card.innerHTML+=`<img src="${d.image}" style="max-width:100%;border-radius:10px;margin-top:6px;">`;
     }
-  };
+
+    if(d.uid===currentUid){
+      const editBtn=document.createElement("button");
+      editBtn.textContent="修改";
+      editBtn.onclick=async ()=>{
+        const newHTML = prompt("請輸入新的內容(支援HTML)", d.content||"");
+        if(newHTML!=null){
+          await updateDoc(doc(db,"notes",item.id),{content:newHTML});
+        }
+      };
+
+      const delBtn=document.createElement("button");
+      delBtn.textContent="刪除";
+      delBtn.onclick=async ()=>{
+        await deleteDoc(doc(db,"notes",item.id));
+      };
+
+      card.appendChild(editBtn);
+      card.appendChild(delBtn);
+    }
+
+    list.appendChild(card);
+  });
 });
 </script>
+
 </body>
 </html>

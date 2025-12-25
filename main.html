@@ -1,63 +1,123 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>我的筆記</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>Main - NoteNote</title>
+
+<style>
+body{
+  font-family:Arial;
+  background:#f4f6ff;
+  margin:0;
+}
+.top{
+  background:#4c6ef5;
+  color:white;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+}
+.editorBox{
+  margin:20px;
+  padding:15px;
+  background:white;
+  border-radius:12px;
+  box-shadow:0 0 10px rgba(0,0,0,.1);
+}
+.toolbar button, .toolbar select, .toolbar input{
+  margin-right:6px;
+}
+#editor{
+  min-height:160px;
+  border:1px solid #ccc;
+  padding:10px;
+  border-radius:10px;
+}
+.chatbox{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:220px;
+  background:white;
+  border-top:2px solid #ddd;
+  display:flex;
+  flex-direction:column;
+}
+#messages{
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+}
+.msg{
+  padding:6px 10px;
+  border-radius:10px;
+  background:#e9eeff;
+  margin-bottom:6px;
+}
+</style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
 
-<div class="max-w-5xl mx-auto">
+<body>
 
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-purple-700">我的筆記</h1>
-    <a href="allnotes.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full">所有筆記</a>
-  </div>
-
-  <!-- 搜尋框 -->
-  <input id="searchNotes" placeholder="搜尋筆記" class="w-full mb-6 p-2 border rounded-lg">
-
-  <!-- 新增筆記 -->
-  <div class="mb-6 p-4 bg-white rounded-2xl shadow-md">
-    <input type="text" id="newTitle" placeholder="標題" class="w-full mb-2 p-2 border rounded-lg">
-    <div class="flex gap-2 mb-1">
-      <select id="fontSize" class="border rounded px-1">
-        <option value="10">10px</option><option value="12">12px</option>
-        <option value="14">14px</option><option value="16">16px</option>
-        <option value="18">18px</option><option value="20">20px</option>
-        <option value="24">24px</option><option value="28">28px</option>
-        <option value="32">32px</option><option value="40">40px</option>
-      </select>
-      <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
-      <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
-      <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
-      <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
-    </div>
-    <div id="newContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]"></div>
-    <button id="addNoteBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full mt-2">新增筆記</button>
-  </div>
-
-  <!-- 我的筆記列表 -->
-  <div id="myNotesList" class="space-y-4 mb-6"></div>
-
-</div>
-
-
-<!-- 聊天室（固定右下角，高度固定，訊息可滾動） -->
-<div class="fixed bottom-4 right-4 w-80 bg-white rounded-2xl shadow-lg p-4 flex flex-col" style="height:300px;">
-  <h2 class="font-bold text-lg mb-2">聊天室</h2>
-  <div id="chatMessages" class="flex-1 overflow-y-auto mb-2 border p-2 rounded-lg"></div>
-  <div class="flex gap-2">
-    <input type="text" id="chatInput" placeholder="輸入訊息" class="flex-1 p-2 border rounded-lg">
-    <button id="sendBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full">送出</button>
+<div class="top">
+  <div>NoteNote 主頁</div>
+  <div>
+    <button onclick="location.href='allnotes.html'">所有筆記</button>
+    <button onclick="location.href='search.html'">搜尋</button>
+    <button id="logoutBtn">登出</button>
   </div>
 </div>
 
+<div class="editorBox">
+  <h3>新增筆記</h3>
+
+  <input id="titleInput" placeholder="標題" style="width:100%;font-size:16px;padding:8px">
+
+  <div class="toolbar">
+    <button onclick="format('bold')">粗體</button>
+    <button onclick="format('italic')">斜體</button>
+    <input type="color" id="colorPicker">
+    <select id="fontSizeSelect">
+      <option value="12px">12</option>
+      <option value="14px">14</option>
+      <option value="16px">16</option>
+      <option value="18px">18</option>
+      <option value="20px">20</option>
+      <option value="22px">22</option>
+      <option value="24px">24</option>
+      <option value="28px">28</option>
+      <option value="32px">32</option>
+      <option value="36px">36</option>
+    </select>
+
+    <input type="file" id="imageInput" accept="image/*">
+  </div>
+
+  <div id="editor" contenteditable="true"></div>
+
+  <button id="saveNoteBtn">儲存筆記</button>
+</div>
+
+
+<div class="chatbox">
+  <div id="messages"></div>
+
+  <div style="display:flex;padding:8px;">
+    <input id="chatInput" style="flex:1;padding:8px" placeholder="輸入訊息…">
+    <button id="sendBtn">送出</button>
+  </div>
+</div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore, collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+  getAuth, onAuthStateChanged, signOut 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+  getFirestore, collection, addDoc, serverTimestamp,
+  query, orderBy, limit, onSnapshot, deleteDoc, doc, getDocs
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
@@ -73,120 +133,117 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let uid;
+const editor = document.getElementById("editor");
+const colorPicker = document.getElementById("colorPicker");
+const fontSizeSelect = document.getElementById("fontSizeSelect");
 
-onAuthStateChanged(auth, user => {
-  if (!user) { window.location.href = "index.html"; return; }
-  uid = auth.currentUser.uid;
+window.format = (cmd)=>{
+  document.execCommand(cmd,false,null);
+};
 
-  // 我的筆記
-  const myNotesQuery = query(collection(db, "notes"), where("uid","==",uid), orderBy("createdAt","desc"));
-  onSnapshot(myNotesQuery, snapshot => {
-    myNotesList.innerHTML = "";
-    snapshot.forEach(docItem => {
-      const d = docItem.data();
-      const card = document.createElement("div");
-      card.className = `p-4 rounded-2xl shadow-md hover:shadow-lg transition bg-yellow-100`;
-      const contentDiv = document.createElement("div");
-      contentDiv.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-          <h4 class="font-semibold text-lg">${d.title || "(無標題)"}</h4>
-          <span class="text-sm text-gray-500">(自己)</span>
-        </div>
-        <div class="text-gray-700 mb-2">${d.content || "(無內容)"}</div>
-      `;
-      card.appendChild(contentDiv);
+colorPicker.addEventListener("change",()=>{
+  document.execCommand("foreColor",false,colorPicker.value);
+});
 
-      const btnContainer = document.createElement("div");
-      btnContainer.className = "mt-2 flex gap-2";
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "修改";
-      editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full";
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "刪除";
-      delBtn.className = "bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full";
-      delBtn.onclick = async () => { await deleteDoc(doc(db, "notes", docItem.id)); };
-      editBtn.onclick = () => {
-        contentDiv.innerHTML = `
-          <input type="text" id="editTitle" value="${d.title}" class="w-full mb-2 p-1 border rounded-lg">
-          <div class="flex gap-2 mb-1">
-            <select id="fontSize" class="border rounded px-1">
-              <option value="10">10px</option><option value="12">12px</option>
-              <option value="14">14px</option><option value="16">16px</option>
-              <option value="18">18px</option><option value="20">20px</option>
-              <option value="24">24px</option><option value="28">28px</option>
-              <option value="32">32px</option><option value="40">40px</option>
-            </select>
-            <input type="color" id="fontColor" class="w-10 h-7 p-0 border rounded">
-            <button type="button" onclick="document.execCommand('bold')" class="px-2 py-1 bg-gray-200 rounded">B</button>
-            <button type="button" onclick="document.execCommand('italic')" class="px-2 py-1 bg-gray-200 rounded">I</button>
-            <button type="button" onclick="document.execCommand('insertLineBreak')" class="px-2 py-1 bg-gray-200 rounded">換行</button>
-          </div>
-          <div id="editableContent" contenteditable="true" class="w-full p-2 border rounded-lg bg-white min-h-[100px]">${d.content}</div>
-        `;
-        const saveBtn = document.createElement("button");
-        saveBtn.textContent = "確定";
-        saveBtn.className = "bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full mt-2";
-        saveBtn.onclick = async () => {
-          const newTitle = document.getElementById("editTitle").value;
-          const newContent = document.getElementById("editableContent").innerHTML;
-          await updateDoc(doc(db, "notes", docItem.id), { title: newTitle, content: newContent });
-        };
-        contentDiv.appendChild(saveBtn);
-        const fontSize = contentDiv.querySelector("#fontSize");
-        const fontColor = contentDiv.querySelector("#fontColor");
-        fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
-        fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
-      };
-      btnContainer.appendChild(editBtn);
-      btnContainer.appendChild(delBtn);
-      card.appendChild(btnContainer);
-      myNotesList.appendChild(card);
-    });
-  });
-
-  // 新增筆記
-  addNoteBtn.onclick = async () => {
-    const title = newTitle.value;
-    const content = newContent.innerHTML;
-    await addDoc(collection(db, "notes"), { title, content, uid, createdAt: serverTimestamp() });
-    newTitle.value = "";
-    newContent.innerHTML = "";
-  };
-
-  // 搜尋跳轉
-  searchNotes.onkeydown = (e) => {
-    if (e.key === "Enter") {
-      const keyword = searchNotes.value.trim();
-      if (!keyword) return;
-      window.location.href = `search.html?query=${encodeURIComponent(keyword)}`;
+fontSizeSelect.addEventListener("change",()=>{
+  const size = fontSizeSelect.value;
+  document.execCommand("fontSize",false,7);
+  const fonts = editor.getElementsByTagName("font");
+  for(let f of fonts){
+    if(f.size==="7"){
+      f.removeAttribute("size");
+      f.style.fontSize=size;
     }
-  };
+  }
+});
 
-  // 聊天室
-  const chatQuery = query(collection(db, "chat"), orderBy("createdAt"));
-  onSnapshot(chatQuery, snapshot => {
-    chatMessages.innerHTML = "";
-    snapshot.forEach(docItem => {
-      const d = docItem.data();
-      const msgDiv = document.createElement("div");
-      msgDiv.className = `p-1 rounded ${d.uid === uid ? "bg-blue-100 self-end" : "bg-gray-200 self-start"} mb-1 max-w-[80%]`;
-      msgDiv.innerHTML = `<strong>${d.name || "匿名"}:</strong> ${d.message}`;
-      chatMessages.appendChild(msgDiv);
-    });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+let imageBase64 = null;
+
+document.getElementById("imageInput").addEventListener("change",e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  if(!file.type.startsWith("image/")){
+    alert("僅限圖片");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = evt=> imageBase64 = evt.target.result;
+  reader.readAsDataURL(file);
+});
+
+
+document.getElementById("saveNoteBtn").onclick = async ()=>{
+  const user = auth.currentUser;
+  if(!user) return;
+
+  await addDoc(collection(db,"notes"),{
+    uid:user.uid,
+    userName:user.displayName || "unknown",
+    title:document.getElementById("titleInput").value,
+    content:editor.innerHTML,
+    image:imageBase64 || null,
+    createdAt:serverTimestamp()
   });
-  sendBtn.onclick = async () => {
-    const msg = chatInput.value.trim();
-    if (!msg) return;
-    await addDoc(collection(db, "chat"), { uid, name: auth.currentUser.displayName || "匿名", message: msg, createdAt: serverTimestamp() });
-    chatInput.value = "";
-  };
 
-  fontSize.onchange = () => document.execCommand("fontSize", false, fontSize.value);
-  fontColor.oninput = () => document.execCommand("foreColor", false, fontColor.value);
+  alert("儲存完成");
+  editor.innerHTML="";
+  document.getElementById("titleInput").value="";
+  imageBase64=null;
+};
 
+
+document.getElementById("logoutBtn").onclick = async ()=>{
+  await signOut(auth);
+  location.href="index.html";
+};
+
+
+const messagesDiv = document.getElementById("messages");
+const chatInput = document.getElementById("chatInput");
+
+document.getElementById("sendBtn").onclick = async ()=>{
+  const user=auth.currentUser;
+  if(!user) return;
+
+  await addDoc(collection(db,"chat"),{
+    uid:user.uid,
+    name:user.displayName || "user",
+    text:chatInput.value,
+    createdAt:serverTimestamp()
+  });
+
+  chatInput.value="";
+};
+
+const q = query(collection(db,"chat"),orderBy("createdAt","asc"));
+
+onSnapshot(q, async snapshot=>{
+  messagesDiv.innerHTML="";
+
+  if(snapshot.docs.length>200){
+    const extra = snapshot.docs.length-200;
+    for(let i=0;i<extra;i++){
+      await deleteDoc(doc(db,"chat",snapshot.docs[i].id));
+    }
+  }
+
+  snapshot.forEach(docItem=>{
+    const d=docItem.data();
+    const div=document.createElement("div");
+    div.className="msg";
+    div.textContent=`${d.name}: ${d.text}`;
+    messagesDiv.appendChild(div);
+  });
+
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+});
+
+onAuthStateChanged(auth,user=>{
+  if(!user) location.href="index.html";
 });
 </script>
+
 </body>
 </html>
