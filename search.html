@@ -2,68 +2,66 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>Notenote - 所有筆記</title>
+  <title>Notenote - 搜尋結果</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-  <div class="max-w-6xl mx-auto p-4 space-y-4">
-
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">所有筆記</h1>
-      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">返回</a>
-    </div>
-
-    <div id="allNotes" class="grid md:grid-cols-2 gap-4"></div>
-
+<div class="max-w-5xl mx-auto p-4 space-y-4">
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold">搜尋結果</h1>
+    <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">返回</a>
   </div>
 
-  <script type="module">
-    const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+  <div id="results" class="grid md:grid-cols-2 gap-4"></div>
+</div>
 
-    auth.onAuthStateChanged(user => {
-      if (!user) return;
+<script type="module">
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+    authDomain: "classquest-419e1.firebaseapp.com",
+    projectId: "classquest-419e1",
+    storageBucket: "classquest-419e1.firebasestorage.app",
+    messagingSenderId: "18905423391",
+    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+    measurementId: "G-0H7STZJVXS"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
 
-      db.collection("notes").orderBy("createdAt","desc").onSnapshot(snap => {
-        allNotes.innerHTML = "";
-        snap.forEach(doc => {
-          const d = doc.data();
-          const isMine = d.uid === user.uid;
-          allNotes.innerHTML += `
-            <div class="rounded-2xl shadow p-4 ${isMine ? 'bg-yellow-50 border border-yellow-300' : 'bg-white'}">
-              <div class="flex justify-between">
-                <h3 class="font-semibold">${d.title || "未命名"}</h3>
-                <span class="text-sm text-gray-500">${isMine ? '我的' : '其他人'}</span>
-              </div>
-              <div class="mt-2">${d.content}</div>
-              ${isMine ? `<div class="mt-3 flex gap-2 justify-end">
-                <button onclick="deleteNote('${doc.id}')" class="px-3 py-1 bg-red-500 text-white rounded-xl">刪除</button>
-              </div>` : ''}
+  const keyword = new URLSearchParams(window.location.search).get("q") || "";
+  const results = document.getElementById("results");
+
+  auth.onAuthStateChanged(user => {
+    if (!user) return;
+
+    db.collection("notes").get().then(snap => {
+      results.innerHTML = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        const hit =
+          (d.title && d.title.includes(keyword)) ||
+          (d.content && d.content.includes(keyword)) ||
+          (d.uid && d.uid.includes(keyword));
+
+        if (!hit) return;
+
+        results.innerHTML += `
+          <div class="rounded-2xl shadow p-4 bg-white">
+            <div class="flex justify-between">
+              <h3 class="font-semibold">${d.title || "未命名"}</h3>
+              <span class="text-sm text-gray-500">${d.uid === user.uid ? '我的' : '其他人'}</span>
             </div>
-          `;
-        });
+            <div class="mt-2">${d.content}</div>
+          </div>
+        `;
       });
     });
-
-    window.deleteNote = async (id) => {
-      await db.collection("notes").doc(id).delete();
-    };
-  </script>
+  });
+</script>
 </body>
 </html>

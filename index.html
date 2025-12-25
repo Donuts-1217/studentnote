@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <title>Notenote - 登入</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
@@ -15,7 +13,6 @@
   <div class="bg-white rounded-2xl shadow p-8 w-full max-w-sm text-center space-y-6">
     <h1 class="text-2xl font-bold">Notenote</h1>
     <p class="text-gray-500">請使用 Google 帳號登入</p>
-
     <button id="googleLogin" class="w-full px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
       使用 Google 登入
     </button>
@@ -23,36 +20,30 @@
 
   <script type="module">
     const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+      authDomain: "classquest-419e1.firebaseapp.com",
+      projectId: "classquest-419e1",
+      storageBucket: "classquest-419e1.firebasestorage.app",
+      messagingSenderId: "18905423391",
+      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+      measurementId: "G-0H7STZJVXS"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    const googleLogin = document.getElementById("googleLogin");
-
-    googleLogin.onclick = async () => {
+    document.getElementById("googleLogin").onclick = async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
         await auth.signInWithPopup(provider);
-        // 登入成功後跳轉到主頁
         window.location.href = "main.html";
       } catch (err) {
         alert("登入失敗：" + err.message);
       }
     };
 
-    // 如果已登入，自動跳轉
     auth.onAuthStateChanged(user => {
-      if (user) {
-        window.location.href = "main.html";
-      }
+      if (user) window.location.href = "main.html";
     });
   </script>
 </body>
