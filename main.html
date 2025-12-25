@@ -10,128 +10,132 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
-  <div class="max-w-5xl mx-auto p-4 space-y-4 flex-1 flex flex-col">
+<div class="max-w-5xl mx-auto p-4 space-y-4 flex-1 flex flex-col">
 
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Notenote</h1>
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-800">Notenote</h1>
+    <div class="flex gap-2">
       <a href="allnotes.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">所有筆記</a>
+      <button id="logout" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">登出</button>
     </div>
-
-    <!-- 編輯區 -->
-    <div class="bg-white rounded-2xl shadow p-4 flex flex-col space-y-2">
-      <input id="titleInput" placeholder="標題" class="border p-2 rounded-xl w-full">
-      <div id="editor" contenteditable="true" class="border p-2 rounded-xl min-h-[120px] overflow-auto"></div>
-
-      <div class="flex gap-2 flex-wrap">
-        <select id="fontSize" class="border p-1 rounded-xl">
-          <option value="1">10</option>
-          <option value="2">12</option>
-          <option value="3">14</option>
-          <option value="4">16</option>
-          <option value="5">18</option>
-          <option value="6">20</option>
-          <option value="7">24</option>
-          <option value="8">28</option>
-          <option value="9">32</option>
-          <option value="10">36</option>
-        </select>
-        <button id="boldBtn" class="px-2 py-1 bg-gray-200 rounded-xl">B</button>
-        <button id="italicBtn" class="px-2 py-1 bg-gray-200 rounded-xl">I</button>
-        <input type="color" id="colorPicker" class="w-10 h-10 p-0 border-0">
-        <input type="file" id="imageInput" accept="image/*">
-      </div>
-
-      <button id="saveNote" class="px-4 py-2 bg-green-500 text-white rounded-xl w-32">儲存筆記</button>
-    </div>
-
-    <!-- 聊天室 -->
-    <div class="flex-1 flex flex-col mt-4 bg-white rounded-2xl shadow p-4">
-      <h2 class="font-semibold mb-2">聊天室</h2>
-      <div id="chatBox" class="flex-1 overflow-auto space-y-2 mb-2"></div>
-      <div class="flex gap-2">
-        <input id="chatInput" class="border p-2 rounded-xl flex-1" placeholder="輸入訊息">
-        <button id="sendChat" class="px-4 py-2 bg-blue-500 text-white rounded-xl">送出</button>
-      </div>
-    </div>
-
   </div>
 
-  <script type="module">
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-      authDomain: "classquest-419e1.firebaseapp.com",
-      projectId: "classquest-419e1",
-      storageBucket: "classquest-419e1.firebasestorage.app",
-      messagingSenderId: "18905423391",
-      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-      measurementId: "G-0H7STZJVXS"
+  <!-- 筆記編輯區 -->
+  <div class="bg-white rounded-2xl shadow p-4 flex flex-col space-y-2">
+    <input id="titleInput" placeholder="標題" class="border p-2 rounded-xl w-full">
+
+    <div class="flex gap-2 flex-wrap">
+      <select id="fontSize" class="border p-1 rounded-xl">
+        <option value="1">10</option><option value="2">12</option><option value="3">14</option>
+        <option value="4">16</option><option value="5">18</option><option value="6">20</option>
+        <option value="7">24</option><option value="8">28</option><option value="9">32</option><option value="10">36</option>
+      </select>
+      <button id="boldBtn" class="px-2 py-1 bg-gray-200 rounded-xl font-bold">B</button>
+      <button id="italicBtn" class="px-2 py-1 bg-gray-200 rounded-xl italic">I</button>
+      <input type="color" id="colorPicker" class="w-10 h-10 p-0 border-0">
+      <input type="file" id="imageInput" accept="image/*">
+    </div>
+
+    <div id="editor" contenteditable="true" class="border p-2 rounded-xl min-h-[120px] overflow-auto bg-gray-50"></div>
+    <button id="saveNote" class="px-4 py-2 bg-green-500 text-white rounded-xl w-32 hover:bg-green-600">儲存筆記</button>
+  </div>
+
+  <!-- 聊天室 -->
+  <div class="flex-1 flex flex-col mt-4 bg-white rounded-2xl shadow p-4">
+    <h2 class="font-semibold mb-2 text-gray-700">聊天室</h2>
+    <div id="chatBox" class="flex-1 overflow-auto space-y-2 mb-2 h-80 p-2 border rounded-xl bg-gray-50"></div>
+    <div class="flex gap-2">
+      <input id="chatInput" class="border p-2 rounded-xl flex-1" placeholder="輸入訊息">
+      <button id="sendChat" class="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600">送出</button>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+    authDomain: "classquest-419e1.firebaseapp.com",
+    projectId: "classquest-419e1",
+    storageBucket: "classquest-419e1.firebasestorage.app",
+    messagingSenderId: "18905423391",
+    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+    measurementId: "G-0H7STZJVXS"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+
+  const editor = document.getElementById("editor");
+  const titleInput = document.getElementById("titleInput");
+  const imageInput = document.getElementById("imageInput");
+  const saveNote = document.getElementById("saveNote");
+  const fontSize = document.getElementById("fontSize");
+  const boldBtn = document.getElementById("boldBtn");
+  const italicBtn = document.getElementById("italicBtn");
+  const colorPicker = document.getElementById("colorPicker");
+
+  const chatBox = document.getElementById("chatBox");
+  const chatInput = document.getElementById("chatInput");
+  const sendChat = document.getElementById("sendChat");
+  const logout = document.getElementById("logout");
+
+  // 登出
+  logout.onclick = () => auth.signOut().then(() => window.location.href="index.html");
+
+  // 富文字
+  fontSize.onchange = e => document.execCommand("fontSize", false, fontSize.value);
+  boldBtn.onclick = () => document.execCommand("bold");
+  italicBtn.onclick = () => document.execCommand("italic");
+  colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
+
+  // 圖片插入
+  imageInput.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement("img");
+      img.src = ev.target.result;
+      img.className = "max-w-full max-h-64 rounded-xl mt-2";
+      img.onclick = () => img.remove();
+      editor.appendChild(img);
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+    reader.readAsDataURL(file);
+  };
 
-    const editor = document.getElementById("editor");
-    const titleInput = document.getElementById("titleInput");
-    const imageInput = document.getElementById("imageInput");
-    const saveNote = document.getElementById("saveNote");
-    const fontSize = document.getElementById("fontSize");
-    const boldBtn = document.getElementById("boldBtn");
-    const italicBtn = document.getElementById("italicBtn");
-    const colorPicker = document.getElementById("colorPicker");
+  // 儲存筆記
+  saveNote.onclick = async () => {
+    const user = auth.currentUser;
+    if(!user) return alert("請先登入");
+    await db.collection("notes").add({
+      uid: user.uid,
+      title: titleInput.value,
+      content: editor.innerHTML,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    editor.innerHTML = "";
+    titleInput.value = "";
+    alert("筆記已儲存");
+  };
 
-    const chatBox = document.getElementById("chatBox");
-    const chatInput = document.getElementById("chatInput");
-    const sendChat = document.getElementById("sendChat");
+  // 聊天室自動滾到底，限制200則
+  function scrollBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
 
-    // 富文字
-    fontSize.onchange = e => document.execCommand("fontSize", false, fontSize.value);
-    boldBtn.onclick = () => document.execCommand("bold");
-    italicBtn.onclick = () => document.execCommand("italic");
-    colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
+  sendChat.onclick = async () => {
+    const user = auth.currentUser;
+    if(!user) return;
+    await db.collection("chat").add({
+      uid: user.uid,
+      name: user.displayName,
+      text: chatInput.value,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    chatInput.value = "";
+  };
 
-    // 圖片插入
-    imageInput.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const img = document.createElement("img");
-        img.src = ev.target.result;
-        img.className = "max-w-full max-h-64 rounded-xl mt-2";
-        img.onclick = () => img.remove(); // 點擊刪除
-        editor.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    };
-
-    // 儲存筆記
-    saveNote.onclick = async () => {
-      const user = auth.currentUser;
-      await db.collection("notes").add({
-        uid: user.uid,
-        title: titleInput.value,
-        content: editor.innerHTML,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      editor.innerHTML = "";
-      titleInput.value = "";
-    };
-
-    // 聊天室
-    function scrollBottom() {
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    sendChat.onclick = async () => {
-      const user = auth.currentUser;
-      await db.collection("chat").add({
-        uid: user.uid,
-        name: user.displayName,
-        text: chatInput.value,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      chatInput.value = "";
-    };
+  auth.onAuthStateChanged(user => {
+    if(!user) window.location.href="index.html";
 
     db.collection("chat").orderBy("createdAt").onSnapshot(snap => {
       chatBox.innerHTML = "";
@@ -148,6 +152,8 @@
       });
       scrollBottom();
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>
