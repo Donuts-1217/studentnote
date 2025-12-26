@@ -41,16 +41,19 @@
     <button id="saveNote" class="px-4 py-2 bg-green-500 text-white rounded-xl w-32 hover:bg-green-600">儲存筆記</button>
   </div>
 
-  <!-- 聊天室 -->
-  <div class="flex-1 flex flex-col mt-4 bg-white rounded-2xl shadow p-4">
-    <h2 class="font-semibold mb-2 text-gray-700">聊天室</h2>
-    <div id="chatBox" class="flex-1 overflow-auto space-y-2 mb-2 h-80 p-2 border rounded-xl bg-gray-50"></div>
-    <div class="flex gap-2">
-      <input id="chatInput" class="border p-2 rounded-xl flex-1" placeholder="輸入訊息">
-      <button id="sendChat" class="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600">送出</button>
-    </div>
-  </div>
+</div>
 
+<!-- Gmail風格聊天室固定底部 -->
+<div class="fixed bottom-4 right-4 w-80 bg-white rounded-2xl shadow-lg flex flex-col">
+  <div class="flex justify-between items-center p-2 border-b">
+    <h2 class="font-semibold text-gray-700">聊天室</h2>
+    <button id="closeChat" class="px-2 py-1 text-gray-500 hover:text-gray-800">X</button>
+  </div>
+  <div id="chatBox" class="flex-1 overflow-auto h-72 p-2 space-y-2 bg-gray-50"></div>
+  <div class="flex gap-2 p-2">
+    <input id="chatInput" type="text" placeholder="輸入訊息..." class="flex-1 border rounded-xl p-2">
+    <button id="sendChat" class="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600">送出</button>
+  </div>
 </div>
 
 <script type="module">
@@ -80,29 +83,31 @@
   const chatInput = document.getElementById("chatInput");
   const sendChat = document.getElementById("sendChat");
   const logout = document.getElementById("logout");
+  const closeChat = document.getElementById("closeChat");
 
-  logout.onclick = () => auth.signOut().then(() => window.location.href="index.html");
+  logout.onclick = () => auth.signOut().then(()=>window.location.href="index.html");
+  closeChat.onclick = ()=>document.querySelector(".fixed").classList.toggle("hidden");
 
-  fontSize.onchange = e => document.execCommand("fontSize", false, fontSize.value);
-  boldBtn.onclick = () => document.execCommand("bold");
-  italicBtn.onclick = () => document.execCommand("italic");
-  colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
+  fontSize.onchange = e=>document.execCommand("fontSize", false, fontSize.value);
+  boldBtn.onclick = ()=>document.execCommand("bold");
+  italicBtn.onclick = ()=>document.execCommand("italic");
+  colorPicker.onchange = e=>document.execCommand("foreColor", false, e.target.value);
 
-  imageInput.onchange = e => {
+  imageInput.onchange = e=>{
     const file = e.target.files[0];
-    if (!file) return;
+    if(!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = ev=>{
       const img = document.createElement("img");
       img.src = ev.target.result;
-      img.className = "max-w-full max-h-64 rounded-xl mt-2";
-      img.onclick = () => img.remove();
+      img.className="max-w-full max-h-48 rounded-xl mt-2 cursor-pointer";
+      img.onclick = ()=>img.remove();
       editor.appendChild(img);
     };
     reader.readAsDataURL(file);
   };
 
-  saveNote.onclick = async () => {
+  saveNote.onclick = async ()=>{
     const user = auth.currentUser;
     if(!user) return alert("請先登入");
     await db.collection("notes").add({
@@ -111,37 +116,44 @@
       content: editor.innerHTML,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    editor.innerHTML = "";
-    titleInput.value = "";
+    editor.innerHTML="";
+    titleInput.value="";
     alert("筆記已儲存");
   };
 
-  function scrollBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
+  function scrollBottom(){ chatBox.scrollTop = chatBox.scrollHeight; }
 
-  sendChat.onclick = async () => {
+  sendChat.onclick = async ()=>{
     const user = auth.currentUser;
-    if(!user) return;
+    if(!user) return alert("請先登入");
+    const text = chatInput.value.trim();
+    if(!text) return;
     await db.collection("chat").add({
-      uid: user.uid,
-      name: user.displayName,
-      text: chatInput.value,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      uid:user.uid,
+      name:user.displayName,
+      text:text,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    chatInput.value = "";
+    chatInput.value="";
   };
 
-  auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(user=>{
     if(!user) window.location.href="index.html";
 
-    db.collection("chat").orderBy("createdAt").onSnapshot(snap => {
-      chatBox.innerHTML = "";
+    // 聊天室實時監聽
+    db.collection("chat").orderBy("createdAt").onSnapshot(snap=>{
+      chatBox.innerHTML="";
       const docs = snap.docs;
-      const start = Math.max(0, docs.length - 200);
-      docs.slice(start).forEach(doc => {
+      const start = Math.max(0, docs.length-200);
+      docs.slice(start).forEach(doc=>{
         const d = doc.data();
-        chatBox.innerHTML += `
-          <div class="bg-white rounded-xl shadow p-2">
-            <div class="text-sm text-gray-500">${d.name || "User"}</div>
+        const time = d.createdAt?.toDate? d.createdAt.toDate().toLocaleString():"";
+        chatBox.innerHTML+=`
+          <div class="border-b last:border-b-0 py-2">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-semibold">${d.name||"User"}</span>
+              <span class="text-xs text-gray-400">${time}</span>
+            </div>
             <div>${d.text}</div>
           </div>
         `;
@@ -150,5 +162,6 @@
     });
   });
 </script>
+
 </body>
 </html>
