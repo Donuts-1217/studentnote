@@ -1,90 +1,122 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8">
-  <title>Notenote - 搜尋筆記</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+  <title>notenote – 搜尋</title>
 
-<div class="max-w-5xl mx-auto p-4 space-y-4 flex-1 flex flex-col">
-  <div class="flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-gray-800">搜尋筆記</h1>
-    <div class="flex gap-2">
-      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">主頁</a>
-      <button id="logout" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">登出</button>
-    </div>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100">
+
+  <div class="bg-white shadow p-4 flex justify-between">
+    <h1 class="text-2xl font-bold">搜尋筆記</h1>
+
+    <button onclick="location.href='main.html'"
+      class="px-4 py-2 bg-blue-600 text-white rounded-xl">
+      回主頁
+    </button>
   </div>
 
-  <input id="searchInput" placeholder="輸入關鍵字後按 Enter" class="border p-2 rounded-xl w-full mb-4">
+  <div class="max-w-4xl mx-auto p-6">
 
-  <div id="searchResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-</div>
+    <input id="searchInput"
+      class="w-full border rounded-2xl p-3 mb-4"
+      placeholder="輸入關鍵字 後按 Enter">
 
-<script type="module">
-  const firebaseConfig = {
-    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-    authDomain: "classquest-419e1.firebaseapp.com",
-    projectId: "classquest-419e1",
-    storageBucket: "classquest-419e1.firebasestorage.app",
-    messagingSenderId: "18905423391",
-    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-    measurementId: "G-0H7STZJVXS"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+    <div id="result" class="space-y-3"></div>
+  </div>
 
-  const searchInput = document.getElementById("searchInput");
-  const searchResults = document.getElementById("searchResults");
-  const logout = document.getElementById("logout");
-  logout.onclick = () => auth.signOut().then(() => window.location.href="index.html");
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
 
-  auth.onAuthStateChanged(user => {
-    if(!user) window.location.href="index.html";
-  });
+    import {
+      getAuth,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
 
-  searchInput.onkeypress = async (e) => {
-    if (e.key !== "Enter") return;
-    const keyword = searchInput.value.trim().toLowerCase();
-    if (!keyword) return;
+    const firebaseConfig = {
+      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+      authDomain: "classquest-419e1.firebaseapp.com",
+      projectId: "classquest-419e1",
+      storageBucket: "classquest-419e1.firebasestorage.app",
+      messagingSenderId: "18905423391",
+      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+      measurementId: "G-0H7STZJVXS"
+    };
 
-    const snap = await db.collection("notes").orderBy("createdAt", "desc").get();
-    searchResults.innerHTML = "";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    snap.docs.forEach(doc => {
-      const d = doc.data();
-      const titleMatch = d.title?.toLowerCase().includes(keyword);
-      const contentMatch = d.content?.toLowerCase().includes(keyword);
-      const userMatch = (d.uid || "").toLowerCase().includes(keyword); // 如果想搜尋使用者 ID，可改成 displayName
-      if(titleMatch || contentMatch || userMatch){
-        const card = document.createElement("div");
-        card.className = `rounded-2xl shadow p-4 ${d.uid === firebase.auth().currentUser.uid ? "bg-yellow-50" : "bg-white"}`;
-        card.innerHTML = `
-          <h3 class="font-semibold text-lg">${d.title || "未命名"}</h3>
-          <div class="mt-2 content">${d.content}</div>
-        `;
-        card.querySelectorAll("img").forEach(img => {
-          img.style.cursor = "zoom-in";
-          img.onclick = () => {
-            const overlay = document.createElement("div");
-            overlay.className = "fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50";
-            const bigImg = document.createElement("img");
-            bigImg.src = img.src;
-            bigImg.className = "max-h-[90%] max-w-[90%]";
-            overlay.appendChild(bigImg);
-            overlay.onclick = () => overlay.remove();
-            document.body.appendChild(overlay);
-          };
-        });
-        searchResults.appendChild(card);
-      }
+    const result = document.getElementById("result");
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) location.href = "index.html";
     });
-  };
-</script>
 
+    async function search(keyword) {
+      result.innerHTML = "搜尋中…";
+
+      const snap = await getDocs(collection(db, "notes"));
+
+      const list = [];
+
+      snap.forEach(d => {
+        const n = d.data();
+
+        const pack = {
+          id: d.id,
+          title: n.title || "",
+          author: n.author || "",
+          content: n.content || ""
+        };
+
+        list.push(pack);
+      });
+
+      // 排序規則
+      const filtered = list.filter(n =>
+        n.title.includes(keyword) ||
+        n.author.includes(keyword) ||
+        n.content.includes(keyword)
+      ).sort((a, b) => {
+        function score(n) {
+          if (n.title.includes(keyword)) return 1;
+          if (n.author.includes(keyword)) return 2;
+          return 3;
+        }
+        return score(a) - score(b);
+      });
+
+      result.innerHTML = "";
+
+      if (filtered.length === 0) {
+        result.innerHTML = "<div>沒有符合的結果</div>";
+        return;
+      }
+
+      filtered.forEach(n => {
+        result.innerHTML += `
+          <div class="bg-white rounded-2xl shadow p-4">
+            <div class="font-bold text-lg">${n.title}</div>
+            <div class="text-sm text-gray-500">${n.author}</div>
+            <div class="mt-2">${n.content}</div>
+          </div>
+        `;
+      });
+    }
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") search(e.target.value.trim());
+    });
+  </script>
 </body>
+
 </html>
