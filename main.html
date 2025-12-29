@@ -1,41 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>NoteNote - Main</title>
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase v8 -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<meta charset="UTF-8">
+<title>NoteNote - Main</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
-
 <body class="bg-gray-100">
 
 <div class="max-w-4xl mx-auto p-6 space-y-6">
 
   <h1 class="text-3xl font-bold">NoteNote 主頁</h1>
 
-  <!-- 文字編輯器工具列 -->
+  <!-- 標題 -->
+  <input id="titleInput" placeholder="標題"
+         class="w-full p-2 border rounded">
+
+  <!-- 富文字工具列 -->
   <div class="flex gap-2">
     <select id="fontSize" class="border rounded p-1">
       <option value="3">字體大小</option>
       <option value="1">1</option><option value="2">2</option><option value="3">3</option>
       <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
     </select>
-
-    <button id="boldBtn" class="px-2 border rounded">粗體</button>
-    <button id="italicBtn" class="px-2 border rounded">斜體</button>
-
+    <button id="boldBtn" class="px-2 border rounded">B</button>
+    <button id="italicBtn" class="px-2 border rounded">I</button>
     <input type="color" id="colorPicker">
   </div>
-
-  <!-- 標題 -->
-  <input id="titleInput" placeholder="標題"
-         class="w-full p-2 border rounded">
 
   <!-- 內容編輯器 -->
   <div id="editor"
@@ -53,8 +46,10 @@
     儲存筆記
   </button>
 
-  <a href="allnotes.html" class="underline text-blue-500 ml-3">查看所有筆記</a>
-  <a href="search.html" class="underline text-blue-500 ml-3">搜尋筆記</a>
+  <div class="mt-2">
+    <a href="allnotes.html" class="underline text-blue-500 mr-4">查看所有筆記</a>
+    <a href="search.html" class="underline text-blue-500">搜尋筆記</a>
+  </div>
 
   <!-- 聊天室 -->
   <div class="mt-6">
@@ -73,117 +68,108 @@
 
 </div>
 
-<!-- 放大圖片 Modal -->
+<!-- 圖片放大 Modal -->
 <div id="imgModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center">
   <img id="modalImg" class="max-h-[90vh] rounded-xl">
 </div>
 
 <script>
-  // ---------------- Firebase ----------------
-  const firebaseConfig = {
-    // 你的設定
-  };
+const firebaseConfig = {
+  // 你的 firebase 設定
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+// 登入（匿名，或換成 Google 登入）
+auth.signInAnonymously();
 
-  auth.signInAnonymously(); // 若已登入 Google 可改成 onAuthStateChanged
+const editor = document.getElementById("editor");
+const attachmentsPreview = document.getElementById("attachmentsPreview");
+let attachments = [];
 
-  // ---------------- 富文字 ----------------
-  const editor = document.getElementById("editor");
+// 富文字功能
+fontSize.onchange = e => document.execCommand("fontSize", false, e.target.value);
+boldBtn.onclick = () => document.execCommand("bold");
+italicBtn.onclick = () => document.execCommand("italic");
+colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
 
-  fontSize.onchange = e => document.execCommand("fontSize", false, e.target.value);
-  boldBtn.onclick = () => document.execCommand("bold");
-  italicBtn.onclick = () => document.execCommand("italic");
-  colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
-
-  // ---------------- 附件管理 ----------------
-  let attachments = [];
-
-  imgUpload.onchange = e => {
-    for (let f of e.target.files) {
-      const r = new FileReader();
-      r.onload = ev => {
-        attachments.push(ev.target.result);
-        attachmentsPreview.innerHTML += `
-          <div class="p-2 bg-gray-200 rounded flex justify-between">
-            <span>附件圖片</span>
-            <button onclick="removeAttachment('${ev.target.result}')"
-                    class="text-red-600">刪除</button>
-          </div>
-        `;
-      };
-      r.readAsDataURL(f);
-    }
-  };
-
-  window.removeAttachment = src => {
-    attachments = attachments.filter(x => x !== src);
-    attachmentsPreview.innerHTML = "";
-    attachments.forEach(a=>{
+// 附件功能
+imgUpload.onchange = e => {
+  for (let f of e.target.files) {
+    const r = new FileReader();
+    r.onload = ev => {
+      attachments.push(ev.target.result);
       attachmentsPreview.innerHTML += `
         <div class="p-2 bg-gray-200 rounded flex justify-between">
           <span>附件圖片</span>
-          <button onclick="removeAttachment('${a}')" class="text-red-600">刪除</button>
+          <button onclick="removeAttachment('${ev.target.result}')"
+                  class="text-red-600">刪除</button>
         </div>
       `;
-    });
-  };
-
-  // ---------------- 儲存筆記 ----------------
-  saveNote.onclick = async () => {
-    const user = auth.currentUser;
-
-    await db.collection("notes").add({
-      uid: user.uid,
-      title: titleInput.value,
-      content: editor.innerHTML,
-      attachments: attachments,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    titleInput.value = "";
-    editor.innerHTML = "";
-    attachments = [];
-    attachmentsPreview.innerHTML = "";
-  };
-
-  // ---------------- 聊天室 ----------------
-  function scrollBottom() {
-    chatBox.scrollTop = chatBox.scrollHeight;
+    };
+    r.readAsDataURL(f);
   }
+};
 
-  sendChat.onclick = async () => {
-    const u = auth.currentUser;
-    await db.collection("chat").add({
-      uid: u.uid,
-      text: chatInput.value,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    chatInput.value = "";
-  };
+window.removeAttachment = src => {
+  attachments = attachments.filter(x => x!==src);
+  attachmentsPreview.innerHTML = "";
+  attachments.forEach(a=>{
+    attachmentsPreview.innerHTML += `
+      <div class="p-2 bg-gray-200 rounded flex justify-between">
+        <span>附件圖片</span>
+        <button onclick="removeAttachment('${a}')" class="text-red-600">刪除</button>
+      </div>
+    `;
+  });
+};
 
-  db.collection("chat")
-    .orderBy("createdAt")
-    .onSnapshot(snap => {
-      chatBox.innerHTML = "";
-      const docs = snap.docs.slice(-200); // 保留 200 則
-      docs.forEach(d=>{
-        chatBox.innerHTML += `
-          <div class="p-2 bg-white rounded border mb-1">${d.data().text}</div>
-        `;
-      });
-      scrollBottom();
-    });
+// 儲存筆記
+saveNote.onclick = async () => {
+  const user = auth.currentUser;
+  await db.collection("notes").add({
+    uid: user.uid,
+    title: titleInput.value,
+    content: editor.innerHTML,
+    attachments: attachments,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  titleInput.value = "";
+  editor.innerHTML = "";
+  attachments = [];
+  attachmentsPreview.innerHTML = "";
+};
 
-  // ---------------- 圖片放大 ----------------
-  window.openImg = src => {
-    modalImg.src = src;
-    imgModal.classList.remove("hidden");
-    imgModal.classList.add("flex");
-  };
-  imgModal.onclick = ()=> imgModal.classList.add("hidden");
+// 聊天室
+function scrollBottom(){ chatBox.scrollTop = chatBox.scrollHeight; }
+
+sendChat.onclick = async () => {
+  const u = auth.currentUser;
+  await db.collection("chat").add({
+    uid: u.uid,
+    text: chatInput.value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  chatInput.value = "";
+};
+
+db.collection("chat").orderBy("createdAt").onSnapshot(snap=>{
+  chatBox.innerHTML = "";
+  const docs = snap.docs.slice(-200);
+  docs.forEach(d=>{
+    chatBox.innerHTML += `<div class="p-2 bg-white rounded border mb-1">${d.data().text}</div>`;
+  });
+  scrollBottom();
+});
+
+// 圖片放大
+window.openImg = src => {
+  modalImg.src = src;
+  imgModal.classList.remove("hidden");
+  imgModal.classList.add("flex");
+};
+imgModal.onclick = ()=> imgModal.classList.add("hidden");
 
 </script>
 </body>

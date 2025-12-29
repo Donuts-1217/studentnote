@@ -1,77 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>搜尋筆記</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<meta charset="UTF-8">
+<title>搜尋筆記</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
-
 <body class="bg-gray-100">
 
 <div class="max-w-4xl mx-auto p-6 space-y-4">
+  <h1 class="text-3xl font-bold">搜尋筆記</h1>
 
-  <h1 class="text-3xl font-bold">搜尋</h1>
-
-  <input id="kw" placeholder="輸入關鍵字"
-         class="w-full border rounded p-2">
-
-  <button onclick="doSearch()" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">
-    搜尋
-  </button>
+  <input id="kw" placeholder="輸入關鍵字" class="w-full border rounded p-2">
+  <button onclick="doSearch()" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">搜尋</button>
 
   <div id="results" class="space-y-3 mt-4"></div>
+</div>
 
+<div id="imgModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center">
+  <img id="modalImg" class="max-h-[90vh] rounded-xl">
 </div>
 
 <script>
-  const firebaseConfig = {
-    // firebase
-  };
+const firebaseConfig = {
+  // firebase
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+async function doSearch(){
+  const key=kw.value.trim();
+  if(!key) return;
+  const snap=await db.collection("notes").get();
+  results.innerHTML="";
 
-  async function doSearch(){
-    const key = kw.value.trim();
-    results.innerHTML = "搜尋中…";
-
-    const snap = await db.collection("notes").get();
-    let arr = [];
-
-    snap.forEach(doc=>{
-      const d = doc.data();
-      arr.push({id:doc.id, ...d});
-    });
-
-    // 排序規則
-    let res =
-      arr.filter(n=> (n.title||"").includes(key)) ||
-      arr.filter(n=> (n.owner||"").includes(key)) ||
-      arr.filter(n=> (n.content||"").includes(key));
-
-    results.innerHTML = "";
-
-    res.forEach(d=>{
+  snap.forEach(doc=>{
+    const d=doc.data();
+    const text=(d.title||"")+ " " + (d.uid||"") + " " + (d.content||"");
+    if(text.includes(key)){
       results.innerHTML += `
         <div class="p-4 bg-white rounded-xl shadow">
           <h2 class="font-bold">${d.title||"未命名"}</h2>
-          <div class="mt-1">${d.content}</div>
-
+          <div class="mt-1 text-gray-500">${d.uid}</div>
+          <div class="mt-2">${d.content}</div>
           ${(d.attachments||[]).map((a,i)=>`
-            <div class="p-2 mt-1 bg-blue-50 rounded cursor-pointer"
-                 onclick="openImg('${a}')">
+            <div class="p-2 mt-1 bg-blue-50 rounded cursor-pointer" onclick="openImg('${a}')">
               附件圖片 ${i+1}
             </div>
           `).join("")}
         </div>
       `;
-    });
-  }
+    }
+  });
+}
+
+window.openImg=src=>{
+  modalImg.src=src;
+  imgModal.classList.remove("hidden");
+  imgModal.classList.add("flex");
+};
+imgModal.onclick=()=> imgModal.classList.add("hidden");
+
 </script>
 </body>
 </html>
