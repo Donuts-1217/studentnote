@@ -1,176 +1,277 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<title>NoteNote - Main</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <meta charset="UTF-8">
+  <title>notenote – 主頁</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* 富文字編輯器樣式 */
+    #editor img {
+      max-width: 100%;
+      border-radius: 12px;
+    }
+
+    /* 聊天室固定高度 */
+    #chatBox {
+      height: 300px;
+      overflow-y: auto;
+    }
+
+    /* 放大圖片遮罩 */
+    #previewOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #previewOverlay img {
+      max-width: 90%;
+      max-height: 90%;
+    }
+  </style>
 </head>
-<body class="bg-gray-100">
 
-<div class="max-w-4xl mx-auto p-6 space-y-6">
+<body class="bg-gray-100 min-h-screen">
 
-  <h1 class="text-3xl font-bold">NoteNote 主頁</h1>
+  <!-- 導覽列 -->
+  <div class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">notenote 主頁</h1>
 
-  <!-- 標題 -->
-  <input id="titleInput" placeholder="標題"
-         class="w-full p-2 border rounded">
+    <div class="flex gap-3">
+      <button onclick="location.href='allnotes.html'"
+              class="px-4 py-2 bg-green-600 text-white rounded-xl">
+        所有筆記
+      </button>
 
-  <!-- 富文字工具列 -->
-  <div class="flex gap-2">
-    <select id="fontSize" class="border rounded p-1">
-      <option value="3">字體大小</option>
-      <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-      <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
-    </select>
-    <button id="boldBtn" class="px-2 border rounded">B</button>
-    <button id="italicBtn" class="px-2 border rounded">I</button>
-    <input type="color" id="colorPicker">
-  </div>
+      <button onclick="location.href='search.html'"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-xl">
+        搜尋
+      </button>
 
-  <!-- 內容編輯器 -->
-  <div id="editor"
-       class="w-full h-40 border rounded p-3 bg-white overflow-auto"
-       contenteditable="true"></div>
-
-  <!-- 圖片附件 -->
-  <div>
-    <input type="file" multiple accept="image/*" id="imgUpload">
-    <div id="attachmentsPreview" class="mt-2 space-y-2"></div>
-  </div>
-
-  <button id="saveNote"
-          class="px-4 py-2 bg-blue-600 text-white rounded">
-    儲存筆記
-  </button>
-
-  <div class="mt-2">
-    <a href="allnotes.html" class="underline text-blue-500 mr-4">查看所有筆記</a>
-    <a href="search.html" class="underline text-blue-500">搜尋筆記</a>
-  </div>
-
-  <!-- 聊天室 -->
-  <div class="mt-6">
-    <h2 class="font-bold text-xl">聊天室</h2>
-
-    <div id="chatBox"
-         class="h-60 overflow-y-auto border rounded p-3 bg-white"></div>
-
-    <div class="flex mt-2 gap-2">
-      <input id="chatInput" class="flex-1 border rounded p-2">
-      <button id="sendChat" class="px-4 bg-green-600 text-white rounded">
-        送出
+      <button id="logoutBtn"
+              class="px-4 py-2 bg-red-600 text-white rounded-xl">
+        登出
       </button>
     </div>
   </div>
 
-</div>
+  <div class="max-w-5xl mx-auto p-6">
 
-<!-- 圖片放大 Modal -->
-<div id="imgModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center">
-  <img id="modalImg" class="max-h-[90vh] rounded-xl">
-</div>
+    <!-- 富文字工具列 -->
+    <div class="bg-white rounded-2xl shadow p-4 mb-4">
+      <h2 class="font-bold mb-2">新增筆記</h2>
 
-<script>
-const firebaseConfig = {
-  // 你的 firebase 設定
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+      <input id="titleInput"
+             class="w-full border rounded-xl p-2 mb-3"
+             placeholder="筆記標題">
 
-// 登入（匿名，或換成 Google 登入）
-auth.signInAnonymously();
+      <!-- 工具列 -->
+      <div class="flex flex-wrap gap-2 mb-3">
 
-const editor = document.getElementById("editor");
-const attachmentsPreview = document.getElementById("attachmentsPreview");
-let attachments = [];
+        <!-- 字體大小 -->
+        <select id="fontSize" class="border rounded-xl px-2 py-1">
+          <option value="1">字級 1</option>
+          <option value="2">字級 2</option>
+          <option value="3">字級 3</option>
+          <option value="4">字級 4</option>
+          <option value="5">字級 5</option>
+          <option value="6">字級 6</option>
+          <option value="7">字級 7</option>
+          <option value="8">字級 8</option>
+          <option value="9">字級 9</option>
+          <option value="10">字級 10</option>
+        </select>
 
-// 富文字功能
-fontSize.onchange = e => document.execCommand("fontSize", false, e.target.value);
-boldBtn.onclick = () => document.execCommand("bold");
-italicBtn.onclick = () => document.execCommand("italic");
-colorPicker.onchange = e => document.execCommand("foreColor", false, e.target.value);
+        <button id="boldBtn" class="px-3 py-1 bg-gray-200 rounded-xl">粗體</button>
+        <button id="italicBtn" class="px-3 py-1 bg-gray-200 rounded-xl">斜體</button>
 
-// 附件功能
-imgUpload.onchange = e => {
-  for (let f of e.target.files) {
-    const r = new FileReader();
-    r.onload = ev => {
-      attachments.push(ev.target.result);
-      attachmentsPreview.innerHTML += `
-        <div class="p-2 bg-gray-200 rounded flex justify-between">
-          <span>附件圖片</span>
-          <button onclick="removeAttachment('${ev.target.result}')"
-                  class="text-red-600">刪除</button>
-        </div>
-      `;
-    };
-    r.readAsDataURL(f);
-  }
-};
+        <input id="colorPicker" type="color">
 
-window.removeAttachment = src => {
-  attachments = attachments.filter(x => x!==src);
-  attachmentsPreview.innerHTML = "";
-  attachments.forEach(a=>{
-    attachmentsPreview.innerHTML += `
-      <div class="p-2 bg-gray-200 rounded flex justify-between">
-        <span>附件圖片</span>
-        <button onclick="removeAttachment('${a}')" class="text-red-600">刪除</button>
+        <input id="imageInput" type="file" accept="image/*">
       </div>
-    `;
-  });
-};
 
-// 儲存筆記
-saveNote.onclick = async () => {
-  const user = auth.currentUser;
-  await db.collection("notes").add({
-    uid: user.uid,
-    title: titleInput.value,
-    content: editor.innerHTML,
-    attachments: attachments,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  titleInput.value = "";
-  editor.innerHTML = "";
-  attachments = [];
-  attachmentsPreview.innerHTML = "";
-};
+      <!-- 編輯器 -->
+      <div id="editor"
+           class="border rounded-2xl p-4 min-h-[160px] bg-gray-50"
+           contenteditable="true"></div>
 
-// 聊天室
-function scrollBottom(){ chatBox.scrollTop = chatBox.scrollHeight; }
+      <button id="saveNote"
+              class="mt-4 w-full bg-blue-600 text-white rounded-2xl py-3">
+        儲存筆記
+      </button>
+    </div>
 
-sendChat.onclick = async () => {
-  const u = auth.currentUser;
-  await db.collection("chat").add({
-    uid: u.uid,
-    text: chatInput.value,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  chatInput.value = "";
-};
+    <!-- 聊天室 -->
+    <div class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-bold mb-2">聊天室</h2>
 
-db.collection("chat").orderBy("createdAt").onSnapshot(snap=>{
-  chatBox.innerHTML = "";
-  const docs = snap.docs.slice(-200);
-  docs.forEach(d=>{
-    chatBox.innerHTML += `<div class="p-2 bg-white rounded border mb-1">${d.data().text}</div>`;
-  });
-  scrollBottom();
-});
+      <div id="chatBox" class="space-y-2"></div>
 
-// 圖片放大
-window.openImg = src => {
-  modalImg.src = src;
-  imgModal.classList.remove("hidden");
-  imgModal.classList.add("flex");
-};
-imgModal.onclick = ()=> imgModal.classList.add("hidden");
+      <div class="mt-3 flex gap-2">
+        <input id="chatInput"
+               class="flex-1 border rounded-xl p-2"
+               placeholder="輸入訊息...">
 
-</script>
+        <button id="sendChat"
+                class="px-4 py-2 bg-blue-600 text-white rounded-xl">
+          送出
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 圖片放大預覽 -->
+  <div id="previewOverlay">
+    <img id="previewImg">
+  </div>
+
+  <!-- Firebase v9 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+    import {
+      getFirestore,
+      addDoc,
+      getDocs,
+      collection,
+      query,
+      orderBy,
+      limit,
+      deleteDoc,
+      doc,
+      updateDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
+
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+      authDomain: "classquest-419e1.firebaseapp.com",
+      projectId: "classquest-419e1",
+      storageBucket: "classquest-419e1.firebasestorage.app",
+      messagingSenderId: "18905423391",
+      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+      measurementId: "G-0H7STZJVXS"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const editor = document.getElementById("editor");
+
+    /* 未登入就跳回 index */
+    onAuthStateChanged(auth, (user) => {
+      if (!user) window.location.href = "index.html";
+    });
+
+    /* 富文字工具列 */
+    fontSize.onchange = (e) =>
+      document.execCommand("fontSize", false, "7");
+
+    boldBtn.onclick = () => document.execCommand("bold");
+    italicBtn.onclick = () => document.execCommand("italic");
+
+    colorPicker.onchange = (e) =>
+      document.execCommand("foreColor", false, e.target.value);
+
+    /* 插入圖片（base64） */
+    imageInput.onchange = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+
+      const r = new FileReader();
+      r.onload = (ev) => {
+        const img = document.createElement("img");
+        img.src = ev.target.result;
+
+        img.onclick = () => showPreview(img.src);
+
+        editor.appendChild(img);
+      };
+      r.readAsDataURL(f);
+    };
+
+    function showPreview(src) {
+      previewImg.src = src;
+      previewOverlay.style.display = "flex";
+    }
+
+    previewOverlay.onclick = () => previewOverlay.style.display = "none";
+
+    /* 儲存筆記 */
+    saveNote.onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      await addDoc(collection(db, "notes"), {
+        uid: user.uid,
+        author: user.displayName || "User",
+        title: titleInput.value || "未命名",
+        content: editor.innerHTML,
+        createdAt: serverTimestamp()
+      });
+
+      titleInput.value = "";
+      editor.innerHTML = "";
+      alert("已儲存筆記");
+    };
+
+    /* 聊天室邏輯 */
+    async function loadChat() {
+      const q = query(
+        collection(db, "chat"),
+        orderBy("createdAt"),
+        limit(200)
+      );
+
+      const snap = await getDocs(q);
+
+      chatBox.innerHTML = "";
+
+      snap.forEach(d => {
+        const c = d.data();
+        chatBox.innerHTML += `
+          <div class="bg-gray-50 rounded-xl p-2">
+            <div class="text-xs text-gray-500">${c.name || "User"}</div>
+            <div>${c.text}</div>
+          </div>
+        `;
+      });
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    loadChat();
+
+    sendChat.onclick = async () => {
+      const user = auth.currentUser;
+      await addDoc(collection(db, "chat"), {
+        uid: user.uid,
+        name: user.displayName,
+        text: chatInput.value,
+        createdAt: serverTimestamp()
+      });
+
+      chatInput.value = "";
+      loadChat();
+    };
+
+    logoutBtn.onclick = async () => {
+      await signOut(auth);
+    };
+  </script>
+
 </body>
 </html>

@@ -1,114 +1,141 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<title>所有筆記</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8" />
+<title>All Notes</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-gray-100">
 
-<div class="max-w-5xl mx-auto p-6 space-y-4">
+<div class="max-w-4xl mx-auto mt-6">
 
-  <h1 class="text-3xl font-bold">所有筆記</h1>
-  <a href="main.html" class="underline text-blue-600">返回主頁</a>
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">所有筆記</h1>
+    <a href="search.html" class="px-3 py-1 bg-blue-500 text-white rounded-xl">搜尋</a>
+  </div>
 
   <div id="notes" class="space-y-4"></div>
 
 </div>
 
-<!-- 圖片 Modal -->
-<div id="imgModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center">
-  <img id="modalImg" class="max-h-[90vh] rounded-xl">
+<!-- 圖片放大 Modal -->
+<div id="imgModal" class="fixed inset-0 bg-black bg-opacity-70 hidden justify-center items-center">
+  <img id="modalImg" class="max-h-screen rounded-2xl shadow-xl">
 </div>
 
 <script>
 const firebaseConfig = {
-  // firebase 設定
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-auth.onAuthStateChanged(user=>{
-  db.collection("notes").orderBy("createdAt","desc").onSnapshot(snap=>{
-    notes.innerHTML = "";
-    snap.forEach(doc=>{
+const notesDiv = document.getElementById("notes");
+
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    alert("請先登入");
+    location.href = "index.html";
+    return;
+  }
+
+  db.collection("notes").orderBy("createdAt","desc").onSnapshot(snap => {
+    notesDiv.innerHTML = "";
+    snap.forEach(doc => {
       const d = doc.data();
-      const isMine = d.uid===user.uid;
-      notes.innerHTML += `
-        <div class="p-4 rounded-2xl shadow bg-white border ${isMine ? "border-yellow-400" : ""}">
-          <h2 class="font-bold text-xl">${d.title||"未命名"}</h2>
-          <div id="content-${doc.id}" class="mt-2">${d.content}</div>
+      const isOwner = d.uid === user.uid;
 
-          <div class="mt-3 space-y-1">
-            ${(d.attachments||[]).map((img,idx)=>`
-              <div class="p-2 bg-blue-50 rounded cursor-pointer flex justify-between items-center">
-                <span onclick="openImg('${img}')">附件圖片 ${idx+1}</span>
-                ${isMine ? `<button onclick="removeAttachment('${doc.id}','${idx}')"
-                  class="text-red-600">刪除</button>` : ""}
-              </div>
-            `).join("")}
-          </div>
+      notesDiv.innerHTML += `
+      <div class="bg-white rounded-2xl shadow p-4 border">
 
-          ${isMine ? `
-          <div id="toolbar-${doc.id}" class="hidden mt-2 flex gap-2">
-            <button onclick="execCmd('${doc.id}','bold')" class="px-2 border rounded">B</button>
-            <button onclick="execCmd('${doc.id}','italic')" class="px-2 border rounded">I</button>
-            <input type="color" onchange="execCmd('${doc.id}','foreColor',this.value)">
-          </div>
-
-          <div class="flex gap-2 mt-3 justify-end">
-            <button onclick="enableEdit('${doc.id}')"
-                    class="px-3 py-1 bg-blue-500 text-white rounded">修改</button>
-            <button onclick="saveEdit('${doc.id}')"
-                    class="px-3 py-1 bg-green-600 text-white rounded">儲存</button>
-            <button onclick="deleteNote('${doc.id}')"
-                    class="px-3 py-1 bg-red-600 text-white rounded">刪除</button>
-          </div>` : ""}
+        <div class="flex justify-between">
+          <h2 class="font-semibold">${d.title || "未命名"}</h2>
+          <span class="text-sm text-gray-500">${d.uid === user.uid ? "我的筆記" : "其他人"}</span>
         </div>
+
+        <div id="content-${doc.id}" class="mt-2 prose">${d.content}</div>
+
+        <div id="toolbar-${doc.id}" class="mt-2 hidden flex gap-2">
+          <select onchange="execCmd('${doc.id}','fontSize',this.value)">
+            <option value="">大小</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option><option>7</option>
+          </select>
+
+          <button onclick="execCmd('${doc.id}','bold')" class="px-2 border rounded">B</button>
+          <button onclick="execCmd('${doc.id}','italic')" class="px-2 border rounded">I</button>
+          <input type="color" onchange="execCmd('${doc.id}','foreColor',this.value)">
+        </div>
+
+        <div class="mt-3 flex gap-2 justify-end">
+          ${isOwner ? `
+          <button onclick="enableEdit('${doc.id}')" class="px-3 py-1 bg-blue-500 text-white rounded-xl">修改</button>
+          <button onclick="saveEdit('${doc.id}')" class="px-3 py-1 bg-green-500 text-white rounded-xl">儲存</button>
+          <button onclick="deleteNote('${doc.id}')" class="px-3 py-1 bg-red-500 text-white rounded-xl">刪除</button>
+          ` : ``}
+        </div>
+
+      </div>
       `;
     });
+
+    bindImageZoom();
   });
 });
 
-window.enableEdit = id=>{
-  const c=document.getElementById("content-"+id);
-  c.contentEditable=true;
-  c.classList.add("border","p-2");
+window.enableEdit = id => {
+  const d = document.getElementById("content-" + id);
+  d.contentEditable = true;
+  d.classList.add("border","p-2","rounded-xl");
   document.getElementById("toolbar-"+id).classList.remove("hidden");
 };
 
-window.execCmd=(id,cmd,val=null)=>{
-  document.getElementById("content-"+id).focus();
+window.saveEdit = async id => {
+  const d = document.getElementById("content-" + id);
+  await db.collection("notes").doc(id).update({
+    content: d.innerHTML,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  d.contentEditable = false;
+  d.classList.remove("border","p-2","rounded-xl");
+  document.getElementById("toolbar-"+id).classList.add("hidden");
+};
+
+window.deleteNote = async id => {
+  await db.collection("notes").doc(id).delete();
+};
+
+window.execCmd = (id,cmd,val=null)=>{
+  const d = document.getElementById("content-"+id);
+  d.focus();
   document.execCommand(cmd,false,val);
 };
 
-window.saveEdit=async id=>{
-  const c=document.getElementById("content-"+id);
-  await db.collection("notes").doc(id).update({content:c.innerHTML});
-  c.contentEditable=false;
-};
+function bindImageZoom(){
+  document.querySelectorAll("img").forEach(img=>{
+    img.onclick=()=>{
+      modalImg.src = img.src;
+      imgModal.classList.remove("hidden");
+      imgModal.classList.add("flex");
+    };
+  });
+}
 
-window.deleteNote=id=>{ db.collection("notes").doc(id).delete(); };
-
-window.removeAttachment=async(docId, idx)=>{
-  const docRef=db.collection("notes").doc(docId);
-  const docSnap=await docRef.get();
-  let attachments=docSnap.data().attachments;
-  attachments.splice(idx,1);
-  await docRef.update({attachments});
-};
-
-window.openImg = src=>{
-  modalImg.src=src;
-  imgModal.classList.remove("hidden");
-  imgModal.classList.add("flex");
-};
-imgModal.onclick=()=> imgModal.classList.add("hidden");
-
+imgModal.onclick=()=>imgModal.classList.add("hidden");
 </script>
+
 </body>
 </html>
