@@ -1,71 +1,77 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Search Notes</title>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>搜尋筆記</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
 
 <body class="bg-gray-100">
 
-<div class="max-w-4xl mx-auto mt-6">
+<div class="max-w-4xl mx-auto p-6 space-y-4">
 
-  <input id="q" class="w-full p-2 rounded-xl border" placeholder="輸入關鍵字，按 Enter 搜尋">
+  <h1 class="text-3xl font-bold">搜尋</h1>
 
-  <div class="mt-4 text-xl font-semibold">搜尋結果</div>
+  <input id="kw" placeholder="輸入關鍵字"
+         class="w-full border rounded p-2">
 
-  <div id="results" class="mt-2 space-y-3"></div>
+  <button onclick="doSearch()" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">
+    搜尋
+  </button>
+
+  <div id="results" class="space-y-3 mt-4"></div>
 
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
+  const firebaseConfig = {
+    // firebase
+  };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-const q = document.getElementById("q");
-const results = document.getElementById("results");
+  async function doSearch(){
+    const key = kw.value.trim();
+    results.innerHTML = "搜尋中…";
 
-q.addEventListener("keyup",e=>{
-  if(e.key==="Enter") search(q.value.trim());
-});
+    const snap = await db.collection("notes").get();
+    let arr = [];
 
-async function search(text){
-  if(!text) return;
+    snap.forEach(doc=>{
+      const d = doc.data();
+      arr.push({id:doc.id, ...d});
+    });
 
-  const snap = await db.collection("notes").get();
-  results.innerHTML = "";
+    // 排序規則
+    let res =
+      arr.filter(n=> (n.title||"").includes(key)) ||
+      arr.filter(n=> (n.owner||"").includes(key)) ||
+      arr.filter(n=> (n.content||"").includes(key));
 
-  snap.forEach(doc=>{
-    const d = doc.data();
-    const t = (d.title || "") + " " + (d.content || "") + " " + (d.uid || "");
+    results.innerHTML = "";
 
-    if(t.includes(text)){
+    res.forEach(d=>{
       results.innerHTML += `
-      <div class="bg-white rounded-2xl shadow p-4 border">
-        <h2 class="font-semibold">${d.title || "未命名"}</h2>
-        <div class="text-gray-400 text-sm">${d.uid}</div>
+        <div class="p-4 bg-white rounded-xl shadow">
+          <h2 class="font-bold">${d.title||"未命名"}</h2>
+          <div class="mt-1">${d.content}</div>
 
-        <div class="mt-2 prose">${d.content}</div>
-      </div>
+          ${(d.attachments||[]).map((a,i)=>`
+            <div class="p-2 mt-1 bg-blue-50 rounded cursor-pointer"
+                 onclick="openImg('${a}')">
+              附件圖片 ${i+1}
+            </div>
+          `).join("")}
+        </div>
       `;
-    }
-  });
-}
+    });
+  }
 </script>
-
 </body>
 </html>
