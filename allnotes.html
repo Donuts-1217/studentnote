@@ -1,184 +1,141 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
-  <meta charset="UTF-8" />
-  <title>notenote – 所有筆記</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    #previewOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.85);
-    }
-
-    #previewOverlay img {
-      max-width: 90%;
-      max-height: 90%;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>All Notes</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-gray-100">
 
-  <div class="bg-white shadow p-4 flex justify-between">
+<div class="max-w-4xl mx-auto mt-6">
+
+  <div class="flex justify-between items-center mb-4">
     <h1 class="text-2xl font-bold">所有筆記</h1>
-
-    <div class="flex gap-3">
-      <button onclick="location.href='main.html'"
-        class="px-4 py-2 bg-blue-600 text-white rounded-xl">回主頁</button>
-
-      <button onclick="location.href='search.html'"
-        class="px-4 py-2 bg-indigo-600 text-white rounded-xl">搜尋</button>
-    </div>
+    <a href="search.html" class="px-3 py-1 bg-blue-500 text-white rounded-xl">搜尋</a>
   </div>
 
-  <div class="max-w-5xl mx-auto p-4 space-y-4" id="notesList"></div>
+  <div id="notes" class="space-y-4"></div>
 
-  <!-- 圖片放大 -->
-  <div id="previewOverlay">
-    <img id="previewImg">
-  </div>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      getDocs,
-      query,
-      orderBy,
-      doc,
-      deleteDoc,
-      updateDoc
-    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
-    import {
-      getAuth,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
+<!-- 圖片放大 Modal -->
+<div id="imgModal" class="fixed inset-0 bg-black bg-opacity-70 hidden justify-center items-center">
+  <img id="modalImg" class="max-h-screen rounded-2xl shadow-xl">
+</div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-      authDomain: "classquest-419e1.firebaseapp.com",
-      projectId: "classquest-419e1",
-      storageBucket: "classquest-419e1.firebasestorage.app",
-      messagingSenderId: "18905423391",
-      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-      measurementId: "G-0H7STZJVXS"
-    };
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-    const notesList = document.getElementById("notesList");
+const notesDiv = document.getElementById("notes");
 
-    const overlay = document.getElementById("previewOverlay");
-    const previewImg = document.getElementById("previewImg");
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    alert("請先登入");
+    location.href = "index.html";
+    return;
+  }
 
-    function showPreview(src) {
-      previewImg.src = src;
-      overlay.style.display = "flex";
-    }
+  db.collection("notes").orderBy("createdAt","desc").onSnapshot(snap => {
+    notesDiv.innerHTML = "";
+    snap.forEach(doc => {
+      const d = doc.data();
+      const isOwner = d.uid === user.uid;
 
-    overlay.onclick = () => overlay.style.display = "none";
+      notesDiv.innerHTML += `
+      <div class="bg-white rounded-2xl shadow p-4 border">
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) location.href = "index.html";
-
-      const q = query(collection(db, "notes"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-
-      notesList.innerHTML = "";
-
-      snap.forEach(d => {
-        const n = d.data();
-
-        const isMine = (n.uid === user.uid);
-
-        // 卡片顏色
-        const cardColor = isMine ? "bg-yellow-50" : "bg-white";
-
-        // 主要內容
-        let html = `
-        <div class="rounded-2xl shadow p-4 border ${cardColor}">
-          <div class="flex justify-between">
-            <h2 class="font-bold text-xl">${n.title || "未命名"}</h2>
-            <div class="text-sm text-gray-500">${n.author || "匿名"}</div>
-          </div>
-
-          <div class="prose max-w-none mt-2" id="content-${d.id}">
-            ${n.content}
-          </div>
-        `;
-
-        // 若是自己的 → 加上編輯/刪除
-        if (isMine) {
-          html += `
-            <div class="mt-3 flex gap-2 justify-end">
-              <button onclick="editNote('${d.id}')"
-                class="px-3 py-1 bg-blue-600 text-white rounded-xl">修改</button>
-
-              <button onclick="deleteNote('${d.id}')"
-                class="px-3 py-1 bg-red-600 text-white rounded-xl">刪除</button>
-            </div>
-          `;
-        }
-
-        html += `</div>`;
-        notesList.innerHTML += html;
-      });
-
-      // 為圖片加入放大功能
-      document.querySelectorAll("img").forEach(img => {
-        img.style.cursor = "pointer";
-        img.onclick = () => showPreview(img.src);
-      });
-    });
-
-    // 刪除
-    window.deleteNote = async (id) => {
-      await deleteDoc(doc(db, "notes", id));
-      location.reload();
-    };
-
-    // 編輯
-    window.editNote = (id) => {
-      const div = document.getElementById("content-" + id);
-      const old = div.innerHTML;
-
-      div.innerHTML = `
-        <div contenteditable="true" class="border rounded-xl p-3 bg-gray-50" id="editBox-${id}">
-          ${old}
+        <div class="flex justify-between">
+          <h2 class="font-semibold">${d.title || "未命名"}</h2>
+          <span class="text-sm text-gray-500">${d.uid === user.uid ? "我的筆記" : "其他人"}</span>
         </div>
 
-        <button onclick="saveEdit('${id}')"
-          class="mt-2 px-3 py-1 bg-green-600 text-white rounded-xl">
-          儲存修改
-        </button>
+        <div id="content-${doc.id}" class="mt-2 prose">${d.content}</div>
+
+        <div id="toolbar-${doc.id}" class="mt-2 hidden flex gap-2">
+          <select onchange="execCmd('${doc.id}','fontSize',this.value)">
+            <option value="">大小</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option><option>7</option>
+          </select>
+
+          <button onclick="execCmd('${doc.id}','bold')" class="px-2 border rounded">B</button>
+          <button onclick="execCmd('${doc.id}','italic')" class="px-2 border rounded">I</button>
+          <input type="color" onchange="execCmd('${doc.id}','foreColor',this.value)">
+        </div>
+
+        <div class="mt-3 flex gap-2 justify-end">
+          ${isOwner ? `
+          <button onclick="enableEdit('${doc.id}')" class="px-3 py-1 bg-blue-500 text-white rounded-xl">修改</button>
+          <button onclick="saveEdit('${doc.id}')" class="px-3 py-1 bg-green-500 text-white rounded-xl">儲存</button>
+          <button onclick="deleteNote('${doc.id}')" class="px-3 py-1 bg-red-500 text-white rounded-xl">刪除</button>
+          ` : ``}
+        </div>
+
+      </div>
       `;
+    });
+
+    bindImageZoom();
+  });
+});
+
+window.enableEdit = id => {
+  const d = document.getElementById("content-" + id);
+  d.contentEditable = true;
+  d.classList.add("border","p-2","rounded-xl");
+  document.getElementById("toolbar-"+id).classList.remove("hidden");
+};
+
+window.saveEdit = async id => {
+  const d = document.getElementById("content-" + id);
+  await db.collection("notes").doc(id).update({
+    content: d.innerHTML,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  d.contentEditable = false;
+  d.classList.remove("border","p-2","rounded-xl");
+  document.getElementById("toolbar-"+id).classList.add("hidden");
+};
+
+window.deleteNote = async id => {
+  await db.collection("notes").doc(id).delete();
+};
+
+window.execCmd = (id,cmd,val=null)=>{
+  const d = document.getElementById("content-"+id);
+  d.focus();
+  document.execCommand(cmd,false,val);
+};
+
+function bindImageZoom(){
+  document.querySelectorAll("img").forEach(img=>{
+    img.onclick=()=>{
+      modalImg.src = img.src;
+      imgModal.classList.remove("hidden");
+      imgModal.classList.add("flex");
     };
+  });
+}
 
-    // 儲存編輯結果
-    window.saveEdit = async (id) => {
-      const box = document.getElementById("editBox-" + id);
+imgModal.onclick=()=>imgModal.classList.add("hidden");
+</script>
 
-      await updateDoc(doc(db, "notes", id), {
-        content: box.innerHTML
-      });
-
-      alert("已更新");
-      location.reload();
-    };
-  </script>
 </body>
-
 </html>

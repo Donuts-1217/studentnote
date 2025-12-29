@@ -1,122 +1,71 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
-  <meta charset="UTF-8">
-  <title>notenote – 搜尋</title>
-
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>Search Notes</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-gray-100">
 
-  <div class="bg-white shadow p-4 flex justify-between">
-    <h1 class="text-2xl font-bold">搜尋筆記</h1>
+<div class="max-w-4xl mx-auto mt-6">
 
-    <button onclick="location.href='main.html'"
-      class="px-4 py-2 bg-blue-600 text-white rounded-xl">
-      回主頁
-    </button>
-  </div>
+  <input id="q" class="w-full p-2 rounded-xl border" placeholder="輸入關鍵字，按 Enter 搜尋">
 
-  <div class="max-w-4xl mx-auto p-6">
+  <div class="mt-4 text-xl font-semibold">搜尋結果</div>
 
-    <input id="searchInput"
-      class="w-full border rounded-2xl p-3 mb-4"
-      placeholder="輸入關鍵字 後按 Enter">
+  <div id="results" class="mt-2 space-y-3"></div>
 
-    <div id="result" class="space-y-3"></div>
-  </div>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      getDocs
-    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+  authDomain: "classquest-419e1.firebaseapp.com",
+  projectId: "classquest-419e1",
+  storageBucket: "classquest-419e1.firebasestorage.app",
+  messagingSenderId: "18905423391",
+  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+  measurementId: "G-0H7STZJVXS"
+};
 
-    import {
-      getAuth,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-      authDomain: "classquest-419e1.firebaseapp.com",
-      projectId: "classquest-419e1",
-      storageBucket: "classquest-419e1.firebasestorage.app",
-      messagingSenderId: "18905423391",
-      appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-      measurementId: "G-0H7STZJVXS"
-    };
+const q = document.getElementById("q");
+const results = document.getElementById("results");
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+q.addEventListener("keyup",e=>{
+  if(e.key==="Enter") search(q.value.trim());
+});
 
-    const result = document.getElementById("result");
+async function search(text){
+  if(!text) return;
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) location.href = "index.html";
-    });
+  const snap = await db.collection("notes").get();
+  results.innerHTML = "";
 
-    async function search(keyword) {
-      result.innerHTML = "搜尋中…";
+  snap.forEach(doc=>{
+    const d = doc.data();
+    const t = (d.title || "") + " " + (d.content || "") + " " + (d.uid || "");
 
-      const snap = await getDocs(collection(db, "notes"));
+    if(t.includes(text)){
+      results.innerHTML += `
+      <div class="bg-white rounded-2xl shadow p-4 border">
+        <h2 class="font-semibold">${d.title || "未命名"}</h2>
+        <div class="text-gray-400 text-sm">${d.uid}</div>
 
-      const list = [];
-
-      snap.forEach(d => {
-        const n = d.data();
-
-        const pack = {
-          id: d.id,
-          title: n.title || "",
-          author: n.author || "",
-          content: n.content || ""
-        };
-
-        list.push(pack);
-      });
-
-      // 排序規則
-      const filtered = list.filter(n =>
-        n.title.includes(keyword) ||
-        n.author.includes(keyword) ||
-        n.content.includes(keyword)
-      ).sort((a, b) => {
-        function score(n) {
-          if (n.title.includes(keyword)) return 1;
-          if (n.author.includes(keyword)) return 2;
-          return 3;
-        }
-        return score(a) - score(b);
-      });
-
-      result.innerHTML = "";
-
-      if (filtered.length === 0) {
-        result.innerHTML = "<div>沒有符合的結果</div>";
-        return;
-      }
-
-      filtered.forEach(n => {
-        result.innerHTML += `
-          <div class="bg-white rounded-2xl shadow p-4">
-            <div class="font-bold text-lg">${n.title}</div>
-            <div class="text-sm text-gray-500">${n.author}</div>
-            <div class="mt-2">${n.content}</div>
-          </div>
-        `;
-      });
+        <div class="mt-2 prose">${d.content}</div>
+      </div>
+      `;
     }
+  });
+}
+</script>
 
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") search(e.target.value.trim());
-    });
-  </script>
 </body>
-
 </html>
