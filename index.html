@@ -2,93 +2,42 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>Notenote - 搜尋筆記</title>
+  <title>NoteNote 登入</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-
-<div class="max-w-5xl mx-auto p-4 space-y-4 flex-1 flex flex-col">
-  <div class="flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-gray-800">搜尋筆記</h1>
-    <div class="flex gap-2">
-      <a href="main.html" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">主頁</a>
-      <button id="logout" class="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">登出</button>
-    </div>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-10 rounded-2xl shadow-md text-center">
+    <h1 class="text-3xl font-bold mb-6 text-purple-700">NoteNote</h1>
+    <button id="googleLoginBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full">使用 Google 登入</button>
   </div>
 
-  <input id="searchInput" placeholder="輸入關鍵字後按 Enter" class="border p-2 rounded-xl w-full mb-4">
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-  <div id="searchResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-</div>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
+    authDomain: "classquest-419e1.firebaseapp.com",
+    projectId: "classquest-419e1",
+    storageBucket: "classquest-419e1.firebasestorage.app",
+    messagingSenderId: "18905423391",
+    appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
+    measurementId: "G-0H7STZJVXS"
+  };
 
-<script type="module">
-const firebaseConfig = {
-  apiKey: "AIzaSyAoyNkowj728zWCh1s-jYsPANIwfjZx430",
-  authDomain: "classquest-419e1.firebaseapp.com",
-  projectId: "classquest-419e1",
-  storageBucket: "classquest-419e1.firebasestorage.app",
-  messagingSenderId: "18905423391",
-  appId: "1:18905423391:web:37c3aa41f021430f27ff2a",
-  measurementId: "G-0H7STZJVXS"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-const searchInput = document.getElementById("searchInput");
-const searchResults = document.getElementById("searchResults");
-const logout = document.getElementById("logout");
-logout.onclick = () => auth.signOut().then(()=>window.location.href="index.html");
-
-auth.onAuthStateChanged(user=>{
-  if(!user) window.location.href="index.html";
-});
-
-searchInput.onkeypress = async e=>{
-  if(e.key!=="Enter") return;
-  const keyword = searchInput.value.trim().toLowerCase();
-  if(!keyword) return;
-
-  const snap = await db.collection("notes").orderBy("createdAt","desc").get();
-  searchResults.innerHTML="";
-
-  snap.docs.forEach(doc=>{
-    const d = doc.data();
-    const isMine = d.uid === firebase.auth().currentUser.uid;
-    const titleMatch = d.title?.toLowerCase().includes(keyword);
-    const contentMatch = d.content?.toLowerCase().includes(keyword);
-    const userMatch = (d.uid||"").toLowerCase().includes(keyword);
-    if(titleMatch||contentMatch||userMatch){
-      const card = document.createElement("div");
-      card.className=`rounded-2xl shadow p-4 ${isMine?"bg-yellow-50":"bg-white"}`;
-      card.innerHTML=`
-        <h3 class="font-semibold text-lg">${d.title||"未命名"}</h3>
-        <div class="mt-2 content" id="content-${doc.id}">${d.content}</div>
-      `;
-
-      // 圖片點擊放大
-      card.querySelectorAll("img").forEach(img=>{
-        img.style.cursor="zoom-in";
-        img.onclick=()=>{
-          const overlay = document.createElement("div");
-          overlay.className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50";
-          const bigImg = document.createElement("img");
-          bigImg.src=img.src;
-          bigImg.className="max-h-[90%] max-w-[90%]";
-          overlay.appendChild(bigImg);
-          overlay.onclick=()=>overlay.remove();
-          document.body.appendChild(overlay);
-        };
-      });
-
-      searchResults.appendChild(card);
-    }
+  // 若已登入直接跳 main
+  onAuthStateChanged(auth, user => {
+    if (user) { window.location.href = "main.html"; }
   });
-};
-</script>
 
+  googleLoginBtn.onclick = async () => {
+    await signInWithPopup(auth, provider);
+    window.location.href = "main.html";
+  };
+  </script>
 </body>
 </html>
